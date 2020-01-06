@@ -27,10 +27,11 @@ class utils(model_optimization):
 
         return attribute_vector
 
-    def assign_value_n2v(self, node_index):
+    def assign_value_n2v(self, node):
         one_sample = np.zeros(self.length)
-        indexy = self.G.nodes[node_index]['node_index']
-        one_sample[indexy] = 1
+        for j in self.G.neighbors(node):
+            indexy = self.G.node[j]['node_index']
+            one_sample[indexy] = 1
 
         return one_sample
 
@@ -199,6 +200,21 @@ class utils(model_optimization):
 
         return mini_batch_gcn_agg
 
+    def get_batch_n2v(self, index_vector):
+        mini_batch_n2v = np.zeros((self.batch_size,self.length))
+        index = 0
+        for node in index_vector:
+            single_n2v = self.assign_value_n2v(node)
+            mini_batch_n2v[index, :] = single_n2v
+            index += 1
+
+        return mini_batch_n2v
+
+    """
+    get batch n2v
+    """
+    #def get_batch_n2v(self,index_vector):
+     #   mini_batch_n2v = np.zeros((self.batch_size,self.length))
 
     """
     get batch negative sampling for attritbute
@@ -210,7 +226,7 @@ class utils(model_optimization):
         for i in range(self.batch_size):
             index = 0
             for node in negative_samples[i, :]:
-                negative_sample = self.assign_value(node)
+                negative_sample = self.GCN_aggregator(node)
                 mini_batch_negative[i, index, :] = negative_sample
                 index += 1
         return mini_batch_negative
@@ -240,7 +256,7 @@ class utils(model_optimization):
         for i in range(self.batch_size):
             index = 0
             for node in skip_gram_vecs[i, :]:
-                skip_gram_sample = self.assign_value(node)
+                skip_gram_sample = self.GCN_aggregator(node)
                 mini_batch_skip_gram[i, index, :] = skip_gram_sample
                 index += 1
         return mini_batch_skip_gram
@@ -369,13 +385,14 @@ class utils(model_optimization):
 
         batch_center_x = self.get_minibatch(start_nodes)
         batch_GCN_agg = self.get_batch_GCNagg(start_nodes)
+        batch_n2v = self.get_batch_n2v(start_nodes)
         negative_samples = np.zeros((self.batch_size, self.negative_sample_size))
         #skip_gram_vectors = np.zeros((batch_size, walk_length, attribute_size))
         #negative_samples_vectors = np.zeros((batch_size, negative_sample_size, attribute_size))
         for i in range(self.batch_size):
             mini_batch_integral[i, 0, :] = batch_GCN_agg[i, :]
-            indexy = self.G.node[start_nodes[i]]['node_index']
-            mini_batch_integral_n2v[i, 0, indexy] = 1
+            #indexy = self.G.node[start_nodes[i]]['node_index']
+            mini_batch_integral_n2v[i, 0, :] = batch_n2v[i,:]
 
         mini_batch_y_mean_pool, mini_batch_skip_gram = self.get_batch_mean_pooling(start_nodes)
     

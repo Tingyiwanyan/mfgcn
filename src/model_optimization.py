@@ -235,7 +235,8 @@ class model_optimization(Data_process):
         self.Dense_layer_fc_gcn = tf.layers.dense(inputs=concat_posterior2,
                                              units=self.latent_dim,
                                              kernel_initializer=tf.keras.initializers.he_normal(seed=None),
-                                             activation=tf.nn.elu)
+                                             activation=tf.nn.elu,
+                                             name='embedding')
 
     def n2v(self):
 
@@ -247,7 +248,8 @@ class model_optimization(Data_process):
         self.Dense4_n2v = tf.layers.dense(inputs=Dense3_n2v,
                                      units=100,
                                      kernel_initializer=tf.keras.initializers.he_normal(seed=None),
-                                     activation=tf.nn.elu)
+                                     activation=tf.nn.elu,
+                                     name='embedding')
 
     def SGNN_loss(self):
         """
