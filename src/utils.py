@@ -162,7 +162,7 @@ class utils(model_optimization):
         nodes = np.array(self.G.nodes())
         for i in range(self.batch_size):
             #walk_single = np.array(self.BFS_search(nodes[i + start_index]))
-            walk_single = np.array(self.n2v_walk(self.walk_length,nodes[i + start_index]))
+            walk_single = np.array(self.n2v_walk.node2vec_walk(self.walk_length,nodes[i + start_index]))
             batch_start_nodes.append(nodes[i + start_index])
             walk[i, :] = walk_single
         return walk, batch_start_nodes
