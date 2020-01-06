@@ -437,20 +437,26 @@ class utils(model_optimization):
     def train(self):
         G_num = len(self.G.nodes())
         iter_num = np.int(np.floor(G_num/self.batch_size))
-        for j in range(iter_num):
-            sample_index = j*self.batch_size #np.int(np.floor(np.random.uniform(0, )))
-            mini_batch_integral, mini_batch_y, mini_batch_x_label, mini_batch_y_mean_pool, mini_batch_x, mini_batch_integral_n2v= \
-                self.get_data_one_batch(sample_index)
-            if self.option == 1:
-                print("running mf_gcn")
-                err_ = self.sess.run([self.negative_sum, self.train_step_auto], feed_dict=
-                                                                         {self.x_gcn: mini_batch_integral,
-                                                                          self.y_mean_pooling: mini_batch_y_mean_pool,
-                                                                          self.x_center: mini_batch_x})
-            if self.option == 2:
-                print("running n2v")
-                err_ = self.sess.run([self.negative_sum, self.train_step_auto], feed_dict=
-                                                                        {self.x_n2v: mini_batch_integral_n2v,
-                                                                         self.y_mean_pooling: mini_batch_y_mean_pool,
-                                                                         self.x_center: mini_batch_x})
-            print(err_[0])
+        k = 0
+        epoch = 2
+        while(k<epoch):
+            print("training in epoch")
+            print(k)
+            for j in range(iter_num):
+                sample_index = j*self.batch_size #np.int(np.floor(np.random.uniform(0, )))
+                mini_batch_integral, mini_batch_y, mini_batch_x_label, mini_batch_y_mean_pool, mini_batch_x, mini_batch_integral_n2v= \
+                    self.get_data_one_batch(sample_index)
+                if self.option == 1:
+                    print("running mf_gcn")
+                    err_ = self.sess.run([self.negative_sum, self.train_step_auto], feed_dict=
+                                                                             {self.x_gcn: mini_batch_integral,
+                                                                              self.y_mean_pooling: mini_batch_y_mean_pool,
+                                                                              self.x_center: mini_batch_x})
+                if self.option == 2:
+                    print("running n2v")
+                    err_ = self.sess.run([self.negative_sum, self.train_step_auto], feed_dict=
+                                                                            {self.x_n2v: mini_batch_integral_n2v,
+                                                                             self.y_mean_pooling: mini_batch_y_mean_pool,
+                                                                             self.x_center: mini_batch_x})
+                print(err_[0])
+            k = k + 1

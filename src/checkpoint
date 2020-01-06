@@ -1,0 +1,2 @@
+model_checkpoint_path: "mf_gcn_feature_link_predict"
+all_model_checkpoint_paths: "mf_gcn_feature_link_predict"
