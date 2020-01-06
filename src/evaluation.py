@@ -29,9 +29,12 @@ class evaluation(object):
 
 
     def evaluate(self,utils):
-        self.score_pos = np.zeros(len(self.pos_test_edges))
+        #self.score_pos = np.zeros(len(self.pos_test_edges))
+        self.score_pos = np.zeros(7000)
         i = 0
         for test_sample in self.pos_test_edges:
+            if i == 7000-1:
+                break
             x_gcn1 = self.get_test_embed_mfgcn(test_sample[0],utils)
             x_gcn2 = self.get_test_embed_mfgcn(test_sample[1],utils)
             embed1 = utils.sess.run([utils.Dense_layer_fc_gcn], feed_dict={utils.x_gcn: x_gcn1})[0][0,0,:]
@@ -42,8 +45,11 @@ class evaluation(object):
             i = i+1
 
         i = 0
-        self.score_neg = np.zeros(len(self.neg_test_edges))
+        #self.score_neg = np.zeros(len(self.neg_test_edges))
+        self.score_neg = np.zeros(7000)
         for test_sample in self.neg_test_edges:
+            if i == 7000-1:
+                break
             x_gcn1 = self.get_test_embed_mfgcn(test_sample[0],utils)
             x_gcn2 = self.get_test_embed_mfgcn(test_sample[1],utils)
             embed1 = utils.sess.run([utils.Dense_layer_fc_gcn], feed_dict={utils.x_gcn: x_gcn1})[0][0,0,:]
