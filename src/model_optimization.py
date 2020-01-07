@@ -19,7 +19,7 @@ class model_optimization(Data_process):
         #self.G = G
         self.batch_size = 20
         self.attribute_size = 5
-        self.walk_length = 8
+        self.walk_length = 10
         self.latent_dim = 100
         # latent_dim_second = 100
         self.latent_dim_gcn = 8
@@ -32,6 +32,7 @@ class model_optimization(Data_process):
         self.total_loss = None
         self.Dense_layer_fc_gcn = None
         self.Dense4_n2v = None
+        self.combined_embed = None
         self.option = option
 
 
@@ -236,11 +237,11 @@ class model_optimization(Data_process):
                                              units=self.latent_dim,
                                              kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                              activation=tf.nn.elu,
-                                             name='embedding')
+                                             name='embedding_gcn')
 
     def n2v(self):
 
-        Dense3_n2v = tf.layers.dense(inputs=Dense2_n2v,
+        Dense3_n2v = tf.layers.dense(inputs=self.x_n2v,
                                      units=1024,
                                      kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                      activation=tf.nn.relu)
@@ -249,7 +250,7 @@ class model_optimization(Data_process):
                                      units=100,
                                      kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                      activation=tf.nn.elu,
-                                     name='embedding')
+                                     name='embedding_n2v')
 
     def SGNN_loss(self):
         """
@@ -265,19 +266,37 @@ class model_optimization(Data_process):
 
         #x_output = tf.squeeze(x_origin)
         if self.option == 1:
-            doc_regularization = tf.multiply(self.Dense_layer_fc_gcn, self.Dense_layer_fc_gcn)
-            x_origin = tf.gather(self.Dense_layer_fc_gcn, idx_origin, axis=1)
-            x_skip = tf.gather(self.Dense_layer_fc_gcn, idx_skip, axis=1)
-            x_negative = tf.gather(self.Dense_layer_fc_gcn, idx_negative, axis=1)
+            #doc_regularization = tf.multiply(self.Dense_layer_fc_gcn, self.Dense_layer_fc_gcn)
+            self.x_origin = tf.gather(self.Dense_layer_fc_gcn, idx_origin, axis=1)
+            self.x_skip = tf.gather(self.Dense_layer_fc_gcn, idx_skip, axis=1)
+            self.x_negative = tf.gather(self.Dense_layer_fc_gcn, idx_negative, axis=1)
         if self.option == 2:
-            doc_regularization = tf.multiply(self.Dense4_n2v, self.Dense4_n2v)
-            x_origin = tf.gather(self.Dense4_n2v, idx_origin, axis=1)
-            x_skip = tf.gather(self.Dense4_n2v, idx_skip, axis=1)
-            x_negative = tf.gather(self.Dense4_n2v, idx_negative, axis=1)
+            #doc_regularization = tf.multiply(self.Dense4_n2v, self.Dense4_n2v)
+            self.x_origin = tf.gather(self.Dense4_n2v, idx_origin, axis=1)
+            self.x_skip = tf.gather(self.Dense4_n2v, idx_skip, axis=1)
+            self.x_negative = tf.gather(self.Dense4_n2v, idx_negative, axis=1)
 
-        sum_doc_regularization = tf.reduce_sum(tf.reduce_sum(doc_regularization, axis=2), axis=1)
+        if self.option == 3:
+            """
+            combine structure and feature
+            """
+            self.x_origin_gcn = tf.gather(self.Dense_layer_fc_gcn, idx_origin, axis=1)
+            self.x_skip_gcn = tf.gather(self.Dense_layer_fc_gcn, idx_skip, axis=1)
+            self.x_negative_gcn = tf.gather(self.Dense_layer_fc_gcn, idx_negative, axis=1)
 
-        mean_sum_doc = tf.reduce_mean(sum_doc_regularization)
+            self.x_origin_n2v = tf.gather(self.Dense4_n2v, idx_origin, axis=1)
+            self.x_skip_n2v = tf.gather(self.Dense4_n2v, idx_skip, axis=1)
+            self.x_negative_n2v = tf.gather(self.Dense4_n2v, idx_negative, axis=1)
+
+            self.x_origin = tf.concat([self.x_origin_gcn,self.x_origin_n2v],axis=2)
+            self.x_skip = tf.concat([self.x_skip_gcn,self.x_skip_n2v],axis=2)
+            self.x_negative = tf.concat([self.x_negative_gcn,self.x_negative_n2v],axis=2)
+
+            self.latent_dim = 2 * self.latent_dim
+
+        #sum_doc_regularization = tf.reduce_sum(tf.reduce_sum(doc_regularization, axis=2), axis=1)
+
+        #mean_sum_doc = tf.reduce_mean(sum_doc_regularization)
         """
         negative_training = tf.broadcast_to(tf.expand_dims(x_negative,1),[batch_size,walk_length,negative_sample_size,latent_dim])
 
@@ -286,9 +305,9 @@ class model_optimization(Data_process):
         negative_training_norm = tf.math.l2_normalize(negative_training,axis=3)
         """
 
-        negative_training_norm = tf.math.l2_normalize(x_negative, axis=2)
+        negative_training_norm = tf.math.l2_normalize(self.x_negative, axis=2)
 
-        skip_training = tf.broadcast_to(x_origin, [self.batch_size, self.negative_sample_size, self.latent_dim])
+        skip_training = tf.broadcast_to(self.x_origin, [self.batch_size, self.negative_sample_size, self.latent_dim])
 
         skip_training_norm = tf.math.l2_normalize(skip_training, axis=2)
 
@@ -304,9 +323,9 @@ class model_optimization(Data_process):
         """
         sum_log_dot_prod = tf.math.log(tf.math.sigmoid(tf.math.negative(tf.reduce_mean(dot_prod_sum, 1))))
 
-        positive_training = tf.broadcast_to(x_origin, [self.batch_size, self.walk_length, self.latent_dim])
+        positive_training = tf.broadcast_to(self.x_origin, [self.batch_size, self.walk_length, self.latent_dim])
 
-        positive_skip_norm = tf.math.l2_normalize(x_skip, axis=2)
+        positive_skip_norm = tf.math.l2_normalize(self.x_skip, axis=2)
 
         positive_training_norm = tf.math.l2_normalize(positive_training, axis=2)
 
@@ -341,7 +360,13 @@ class model_optimization(Data_process):
             self.build_first_layer()
             self.build_second_layer()
             self.mse_loss()
+
         if self.option == 2:
+            self.n2v()
+
+        if self.option == 3:
+            self.build_first_layer()
+            self.build_second_layer()
             self.n2v()
 
         self.SGNN_loss()

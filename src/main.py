@@ -5,8 +5,8 @@ from evaluation import evaluation
 
 if __name__ == "__main__":
 
-  utils = utils(1,1)
-  utils.config_train_test()
+  utils = utils(1,3)
+  #utils.config_train_test()
   utils.config_model()
   #utils.train()
   #evl = evaluation(utils)

@@ -458,5 +458,10 @@ class utils(model_optimization):
                                                                             {self.x_n2v: mini_batch_integral_n2v,
                                                                              self.y_mean_pooling: mini_batch_y_mean_pool,
                                                                              self.x_center: mini_batch_x})
+                if self.option == 3:
+                    print("running structure+feature")
+                    err_ = self.sess.run([self.negative_sum, self.train_step_auto], feed_dict=
+                                                                            {self.x_n2v: mini_batch_integral_n2v,
+                                                                             self.x_gcn: mini_batch_integral})
                 print(err_[0])
             k = k + 1
