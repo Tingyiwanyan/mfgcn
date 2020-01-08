@@ -17,7 +17,7 @@ class model_optimization(Data_process):
         """
         Data_process.__init__(self,data_set)
         #self.G = G
-        self.batch_size = 20
+        self.batch_size = 64
         self.attribute_size = 5
         self.walk_length = 10
         self.latent_dim = 100

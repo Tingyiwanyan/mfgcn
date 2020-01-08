@@ -17,6 +17,8 @@ class evaluation(object):
         self.negative_sample_size = utils.negative_sample_size
         self.score_pos = None
         self.score_neg = None
+        self.test_number = 7000
+        self.roc_resolution = 0.1
 
     def get_test_embed_mfgcn(self,node,utils):
         mini_batch_integral = np.zeros(
@@ -53,10 +55,10 @@ class evaluation(object):
 
     def evaluate(self,utils):
         #self.score_pos = np.zeros(len(self.pos_test_edges))
-        self.score_pos = np.zeros(7000)
+        self.score_pos = np.zeros(self.test_number)
         i = 0
         for test_sample in self.pos_test_edges:
-            if i == 7000-1:
+            if i == self.test_number - 1:
                 break
             x_gcn1 = self.get_test_embed_mfgcn(test_sample[0],utils)
             x_gcn2 = self.get_test_embed_mfgcn(test_sample[1],utils)
@@ -69,9 +71,9 @@ class evaluation(object):
 
         i = 0
         #self.score_neg = np.zeros(len(self.neg_test_edges))
-        self.score_neg = np.zeros(7000)
+        self.score_neg = np.zeros(self.test_number)
         for test_sample in self.neg_test_edges:
-            if i == 7000-1:
+            if i == self.test_number - 1:
                 break
             x_gcn1 = self.get_test_embed_mfgcn(test_sample[0],utils)
             x_gcn2 = self.get_test_embed_mfgcn(test_sample[1],utils)
@@ -84,10 +86,10 @@ class evaluation(object):
 
     def evaluate_n2v(self,utils):
         #self.score_pos = np.zeros(len(self.pos_test_edges))
-        self.score_pos = np.zeros(7000)
+        self.score_pos = np.zeros(self.test_number)
         i = 0
         for test_sample in self.pos_test_edges:
-            if i == 7000-1:
+            if i == self.test_number - 1:
                 break
             x_n2v1 = self.get_test_embed_n2v(test_sample[0],utils)
             x_n2v2 = self.get_test_embed_n2v(test_sample[1],utils)
@@ -100,9 +102,9 @@ class evaluation(object):
 
         i = 0
         #self.score_neg = np.zeros(len(self.neg_test_edges))
-        self.score_neg = np.zeros(7000)
+        self.score_neg = np.zeros(self.test_number)
         for test_sample in self.neg_test_edges:
-            if i == 7000-1:
+            if i == self.test_number - 1:
                 break
             x_n2v1 = self.get_test_embed_n2v(test_sample[0],utils)
             x_n2v2 = self.get_test_embed_n2v(test_sample[1],utils)
@@ -114,10 +116,10 @@ class evaluation(object):
             i = i+1
 
     def evaluate_combined(self,utils):
-        self.score_pos = np.zeros(7000)
+        self.score_pos = np.zeros(self.test_number)
         i = 0
         for test_sample in self.pos_test_edges:
-            if i == 7000 - 1:
+            if i == self.test_number - 1:
                 break
             x_gcn1 = self.get_test_embed_mfgcn(test_sample[0], utils)
             x_gcn2 = self.get_test_embed_mfgcn(test_sample[1], utils)
@@ -133,9 +135,9 @@ class evaluation(object):
 
         i = 0
         # self.score_neg = np.zeros(len(self.neg_test_edges))
-        self.score_neg = np.zeros(7000)
+        self.score_neg = np.zeros(self.test_number)
         for test_sample in self.neg_test_edges:
-            if i == 7000 - 1:
+            if i == self.test_number - 1:
                 break
             x_gcn1 = self.get_test_embed_mfgcn(test_sample[0], utils)
             x_gcn2 = self.get_test_embed_mfgcn(test_sample[1], utils)
@@ -148,6 +150,18 @@ class evaluation(object):
             self.score_neg[i] = np.sum(np.multiply(embed1_norm, embed2_norm))
             i = i + 1
             print(i)
+
+    def cal_auc(self):
+        threshold = -1
+        tp_rates = []
+        fp_rates = []
+
+        while(threshold != 1):
+            tpr = len(np.where(self.score_pos>threshold)[0])/self.test_number
+            fpr = len(np.where(self.score_neg>threshold)[0])/self.test_number
+            tp_rates.append(tpr)
+            fp_rates.append(fpr)
+            threshold += self.roc_resolution
 
 
 

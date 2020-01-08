@@ -1,2 +1,2 @@
-model_checkpoint_path: "mf_gcn_feature_link_predict"
-all_model_checkpoint_paths: "mf_gcn_feature_link_predict"
+model_checkpoint_path: "n2v_model_aminer"
+all_model_checkpoint_paths: "n2v_model_aminer"
