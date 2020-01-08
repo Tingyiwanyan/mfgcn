@@ -4,6 +4,7 @@ import numpy as np
 import random
 import networkx as nx
 from utils import utils
+import matplotlib.pyplot as plt
 
 class evaluation(object):
     def __init__(self,utils):
@@ -17,7 +18,7 @@ class evaluation(object):
         self.negative_sample_size = utils.negative_sample_size
         self.score_pos = None
         self.score_neg = None
-        self.test_number = 7000
+        self.test_number = 7000.0
         self.roc_resolution = 0.1
 
     def get_test_embed_mfgcn(self,node,utils):
@@ -151,17 +152,39 @@ class evaluation(object):
             i = i + 1
             print(i)
 
-    def cal_auc(self):
-        threshold = -1
-        tp_rates = []
-        fp_rates = []
+def cal_auc(score_pos,score_neg,test_number,roc_resolution):
+    threshold = -1
+    tp_rates = []
+    fp_rates = []
 
-        while(threshold != 1):
-            tpr = len(np.where(self.score_pos>threshold)[0])/self.test_number
-            fpr = len(np.where(self.score_neg>threshold)[0])/self.test_number
-            tp_rates.append(tpr)
-            fp_rates.append(fpr)
-            threshold += self.roc_resolution
+    while(threshold < 1.01):
+        tpr = len(np.where(score_pos>threshold)[0])/test_number
+        fpr = len(np.where(score_neg>threshold)[0])/test_number
+        tp_rates.append(tpr)
+        fp_rates.append(fpr)
+        threshold += roc_resolution
+
+    return tp_rates,fp_rates
+
+def plot_roc(tp_rates,fp_rates):
+    plt.xlabel("False positive rate")
+    plt.ylabel("True positive rate")
+    plt.title("ROC curve", fontsize=14)
+    plt.xlim(0.0,1.0)
+    plt.ylim(0.0,1.0)
+    #tp_rates = np.array(tp_rates)
+    #fp_rates = np.array(fp_rates)
+    plt.plot(fp_rates,tp_rates,color='blue',linewidth=1, label='n2v')
+    x = [0.0,1.0]
+    plt.plot(x,x,linestyle='dashed',color='red',linewidth=2,label='random')
+    plt.legend(loc='lower right')
+    plt.show()
+
+def write_file(rates,name):
+    file = open(name,'w')
+    for element in rates:
+        print>>file, element
+    file.close
 
 
 
