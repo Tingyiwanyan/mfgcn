@@ -329,21 +329,43 @@ class Data_loading(object):
         self.std_sci = np.std([self.G.node[k]['scientific_age_diversity'] for k in self.G.nodes()])
 
     def init_citceer(self):
-        file = open("/home/tingyi/MF_GCN/database/citeseer/edges.txt")
+        file = open("/home/tingyi/database/citeseer/edges.txt")
+        file2 = open("/home/tingyi/database/citeseer/features.txt")
+        file3 = open("/home/tingyi/database/citeseer/group.txt")
 
         self.G = nx.DiGraph()
-        index = 0
+        #index = 0
         for line in file:
             line = line.rstrip('\n')
             a = np.int(np.array(line.split(' '))[0])
             b = np.int(np.array(line.split(' '))[1])
+            """
             if not self.G.has_node(a):
                 self.G.add_node(a, node_index=index)
-                index += 1
+                #index += 1
             if not self.G.has_node(b):
                 self.G.add_node(b, node_index=index)
-                index += 1
+                #index += 1
+            """
             self.G.add_edge(a, b)
             self.G.add_edge(b, a)
+
+        for line in file2:
+            line = line.rstrip('\n')
+            feat = np.array(line.split(' '))
+            feat = [float(i) for i in feat]
+            index = np.int(feat[0])
+            feat = feat[1:]
+            self.G.add_node(index,node_index=index)
+            self.G.add_node(index,feature=feat)
+
+        for line in file3:
+            line = line.rstrip('\n')
+            node = np.int(np.array(line.split(' '))[0])
+            label = np.int(np.array(line.split(' '))[1])
+            self.G.add_node(node, label=label)
+
+
+
 
 

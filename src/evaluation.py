@@ -18,7 +18,7 @@ class evaluation(object):
         self.negative_sample_size = utils.negative_sample_size
         self.score_pos = None
         self.score_neg = None
-        self.test_number = 7000.0
+        self.test_number = 7000
         self.roc_resolution = 0.1
 
     def get_test_embed_mfgcn(self,node,utils):
@@ -55,8 +55,8 @@ class evaluation(object):
 
 
     def evaluate(self,utils):
-        #self.score_pos = np.zeros(len(self.pos_test_edges))
-        self.score_pos = np.zeros(self.test_number)
+        self.score_pos = np.zeros(len(self.pos_test_edges))
+        #self.score_pos = np.zeros(self.test_number)
         i = 0
         for test_sample in self.pos_test_edges:
             if i == self.test_number - 1:
@@ -86,8 +86,8 @@ class evaluation(object):
             i = i+1
 
     def evaluate_n2v(self,utils):
-        #self.score_pos = np.zeros(len(self.pos_test_edges))
-        self.score_pos = np.zeros(self.test_number)
+        self.score_pos = np.zeros(len(self.pos_test_edges))
+        #self.score_pos = np.zeros(self.test_number)
         i = 0
         for test_sample in self.pos_test_edges:
             if i == self.test_number - 1:
@@ -117,7 +117,8 @@ class evaluation(object):
             i = i+1
 
     def evaluate_combined(self,utils):
-        self.score_pos = np.zeros(self.test_number)
+        self.score_pos = np.zeros(len(self.pos_test_edges))
+        #self.score_pos = np.zeros(self.test_number)
         i = 0
         for test_sample in self.pos_test_edges:
             if i == self.test_number - 1:
@@ -152,14 +153,14 @@ class evaluation(object):
             i = i + 1
             print(i)
 
-def cal_auc(score_pos,score_neg,test_number,roc_resolution):
+def cal_auc(score_pos,score_neg,test_number_pos,test_number_neg,roc_resolution):
     threshold = -1
     tp_rates = []
     fp_rates = []
 
     while(threshold < 1.01):
-        tpr = len(np.where(score_pos>threshold)[0])/test_number
-        fpr = len(np.where(score_neg>threshold)[0])/test_number
+        tpr = len(np.where(score_pos>threshold)[0])/np.float(test_number_pos)
+        fpr = len(np.where(score_neg>threshold)[0])/np.float(test_number_neg)
         tp_rates.append(tpr)
         fp_rates.append(fpr)
         threshold += roc_resolution

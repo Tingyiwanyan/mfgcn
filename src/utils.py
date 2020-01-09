@@ -11,6 +11,7 @@ class utils(model_optimization):
     def __init__(self,data_set,option):
         model_optimization.__init__(self,data_set,option)
         self.n2v_walk = n2v_walk(self.G,1,0.5)
+        self.data_set = data_set
         #self.mean_count = model.mean_count
         #self.mean_top = model.mean_top
 
@@ -18,12 +19,15 @@ class utils(model_optimization):
         self.n2v_walk.preprocess_transition_probs()
 
     def assign_value(self, node_index):
-        attribute_vector = np.zeros(5)
-        attribute_vector[0] = (np.float(self.G.node[node_index]['country_diversity']) - self.mean_count) / self.std_count
-        attribute_vector[1] = (np.float(self.G.node[node_index]['topic_diversity']) - self.mean_top) / self.std_top
-        attribute_vector[2] = (np.float(self.G.node[node_index]['productivity_diversity']) - self.mean_prod) / self.std_prod
-        attribute_vector[3] = (np.float(self.G.node[node_index]['impact_diversity']) - self.mean_impact) / self.std_impact
-        attribute_vector[4] = (np.float(self.G.node[node_index]['scientific_age_diversity']) - self.mean_sci) / self.std_sci
+        if self.data_set == 1:
+            attribute_vector = np.zeros(5)
+            attribute_vector[0] = (np.float(self.G.node[node_index]['country_diversity']) - self.mean_count) / self.std_count
+            attribute_vector[1] = (np.float(self.G.node[node_index]['topic_diversity']) - self.mean_top) / self.std_top
+            attribute_vector[2] = (np.float(self.G.node[node_index]['productivity_diversity']) - self.mean_prod) / self.std_prod
+            attribute_vector[3] = (np.float(self.G.node[node_index]['impact_diversity']) - self.mean_impact) / self.std_impact
+            attribute_vector[4] = (np.float(self.G.node[node_index]['scientific_age_diversity']) - self.mean_sci) / self.std_sci
+        if self.data_set == 2:
+            attribute_vector = np.array(self.G.node[node_index]['feature'])
 
         return attribute_vector
 

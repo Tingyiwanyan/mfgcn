@@ -18,14 +18,22 @@ class model_optimization(Data_process):
         Data_process.__init__(self,data_set)
         #self.G = G
         self.batch_size = 64
-        self.attribute_size = 5
-        self.walk_length = 10
-        self.latent_dim = 100
-        # latent_dim_second = 100
-        self.latent_dim_gcn = 8
-        self.latent_dim_gcn2 = 100
-        self.latent_dim_a = 100
-        self.negative_sample_size = 100
+        if data_set == 1:
+            self.attribute_size = 5
+            self.walk_length = 10
+            self.latent_dim = 100
+            # latent_dim_second = 100
+            self.latent_dim_gcn = 8
+            self.latent_dim_gcn2 = 100
+            self.latent_dim_a = 100
+            self.negative_sample_size = 100
+        if data_set == 2:
+            self.attribute_size = 3703
+            self.walk_length = 10
+            self.latent_dim = 100
+            self.latent_dim_gcn = 500
+            self.latent_dim_gcn2 = 300
+            self.negative_sample_size = 100
         self.data_length = len(list(self.G.nodes()))
         self.length = len(list(self.G.nodes()))
         self.sess = None
@@ -232,7 +240,9 @@ class model_optimization(Data_process):
 
         concat_posterior2 = tf.concat([Dense2_gcn1, Dense2_gcn2, Dense2_gcn3,
                                        Dense2_gcn4, Dense2_gcn5], 2)
-
+        """
+        We use elu to avoid too sparse data
+        """
         self.Dense_layer_fc_gcn = tf.layers.dense(inputs=concat_posterior2,
                                              units=self.latent_dim,
                                              kernel_initializer=tf.keras.initializers.he_normal(seed=None),
