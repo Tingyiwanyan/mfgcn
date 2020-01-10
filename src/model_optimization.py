@@ -19,6 +19,9 @@ class model_optimization(Data_process):
         #self.G = G
         self.batch_size = 64
         if data_set == 1:
+            """
+            Aminer data
+            """
             self.attribute_size = 5
             self.walk_length = 10
             self.latent_dim = 100
@@ -28,6 +31,9 @@ class model_optimization(Data_process):
             self.latent_dim_a = 100
             self.negative_sample_size = 100
         if data_set == 2:
+            """
+            citeceer data set 
+            """
             self.attribute_size = 3703
             self.walk_length = 10
             self.latent_dim = 100
@@ -211,6 +217,13 @@ class model_optimization(Data_process):
                                       Dense_gcn13, Dense_gcn14, Dense_gcn15,
                                       Dense_gcn16, Dense_gcn17, Dense_gcn18,
                                       Dense_gcn19, Dense_gcn20], 2)
+
+        self.Dense_layer_fc_gcn = tf.layers.dense(inputs=self.h1,
+                                                  units=self.latent_dim,
+                                                  kernel_initializer=tf.keras.initializers.he_normal(seed=None),
+                                                  activation=tf.nn.elu,
+                                                  name='embedding_gcn')
+
     def build_second_layer(self):
 
         Dense2_gcn1 = tf.layers.dense(inputs=self.h1,
@@ -290,6 +303,7 @@ class model_optimization(Data_process):
             """
             combine structure and feature
             """
+            """
             self.x_origin_gcn = tf.gather(self.Dense_layer_fc_gcn, idx_origin, axis=1)
             self.x_skip_gcn = tf.gather(self.Dense_layer_fc_gcn, idx_skip, axis=1)
             self.x_negative_gcn = tf.gather(self.Dense_layer_fc_gcn, idx_negative, axis=1)
@@ -297,12 +311,27 @@ class model_optimization(Data_process):
             self.x_origin_n2v = tf.gather(self.Dense4_n2v, idx_origin, axis=1)
             self.x_skip_n2v = tf.gather(self.Dense4_n2v, idx_skip, axis=1)
             self.x_negative_n2v = tf.gather(self.Dense4_n2v, idx_negative, axis=1)
+            
+            self.x_origin = tf.concat([self.x_origin_gcn, self.x_origin_n2v], axis=2)
+            self.x_skip = tf.concat([self.x_skip_gcn, self.x_skip_n2v], axis=2)
+            self.x_negative = tf.concat([self.x_negative_gcn, self.x_negative_n2v], axis=2)
+            """
 
-            self.x_origin = tf.concat([self.x_origin_gcn,self.x_origin_n2v],axis=2)
-            self.x_skip = tf.concat([self.x_skip_gcn,self.x_skip_n2v],axis=2)
-            self.x_negative = tf.concat([self.x_negative_gcn,self.x_negative_n2v],axis=2)
 
-            self.latent_dim = 2 * self.latent_dim
+            self.Dense_concat = tf.concat([self.Dense_layer_fc_gcn,self.Dense4_n2v],axis=2)
+
+
+            self.Dense_combine = tf.layers.dense(inputs=self.Dense_concat,
+                                              units=100,
+                                              kernel_initializer=tf.keras.initializers.he_normal(seed=None),
+                                              activation=tf.nn.elu,
+                                              name='embedding_concat')
+
+            self.x_origin = tf.gather(self.Dense_combine, idx_origin, axis=1)
+            self.x_skip = tf.gather(self.Dense_combine, idx_skip, axis=1)
+            self.x_negative = tf.gather(self.Dense_combine, idx_negative, axis=1)
+
+            #self.latent_dim = 2 * self.latent_dim
 
         #sum_doc_regularization = tf.reduce_sum(tf.reduce_sum(doc_regularization, axis=2), axis=1)
 
@@ -365,6 +394,18 @@ class model_optimization(Data_process):
         # mse = tf.losses.mean_squared_error(y_mean_pooling, Decoding_reduce)
         self.mse = tf.losses.mean_squared_error(self.x_center, self.Decoding_reduce)
 
+    def supervised_loss(self):
+        idx_origin = tf.constant([0])
+        self.x_origin = tf.gather(self.Dense_layer_fc_gcn, idx_origin, axis=1)
+
+        """
+        mse loss
+        """
+        Decoding_auto_encoder = tf.layers.dense(inputs=self.x_origin,
+                                                units=self.attribute_size,
+                                                kernel_initializer=tf.keras.initializers.he_normal(seed=None),
+                                                activation=tf.nn.sigmoid)
+
     def config_model(self):
         if self.option == 1:
             self.build_first_layer()
@@ -376,7 +417,7 @@ class model_optimization(Data_process):
 
         if self.option == 3:
             self.build_first_layer()
-            self.build_second_layer()
+            #self.build_second_layer()
             self.n2v()
 
         self.SGNN_loss()

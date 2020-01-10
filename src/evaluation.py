@@ -3,7 +3,7 @@ import json
 import numpy as np
 import random
 import networkx as nx
-from utils import utils
+#from utils import utils
 import matplotlib.pyplot as plt
 
 class evaluation(object):
@@ -18,8 +18,9 @@ class evaluation(object):
         self.negative_sample_size = utils.negative_sample_size
         self.score_pos = None
         self.score_neg = None
-        self.test_number = 7000
+        self.test_number_neg = 7000
         self.roc_resolution = 0.1
+        self.test_number_pos = len(self.pos_test_edges)
 
     def get_test_embed_mfgcn(self,node,utils):
         mini_batch_integral = np.zeros(
@@ -55,11 +56,11 @@ class evaluation(object):
 
 
     def evaluate(self,utils):
-        self.score_pos = np.zeros(len(self.pos_test_edges))
+        self.score_pos = np.zeros(self.test_number_pos)
         #self.score_pos = np.zeros(self.test_number)
         i = 0
         for test_sample in self.pos_test_edges:
-            if i == self.test_number - 1:
+            if i == self.test_number_pos - 1:
                 break
             x_gcn1 = self.get_test_embed_mfgcn(test_sample[0],utils)
             x_gcn2 = self.get_test_embed_mfgcn(test_sample[1],utils)
@@ -72,9 +73,9 @@ class evaluation(object):
 
         i = 0
         #self.score_neg = np.zeros(len(self.neg_test_edges))
-        self.score_neg = np.zeros(self.test_number)
+        self.score_neg = np.zeros(self.test_number_neg)
         for test_sample in self.neg_test_edges:
-            if i == self.test_number - 1:
+            if i == self.test_number_neg - 1:
                 break
             x_gcn1 = self.get_test_embed_mfgcn(test_sample[0],utils)
             x_gcn2 = self.get_test_embed_mfgcn(test_sample[1],utils)
@@ -86,11 +87,11 @@ class evaluation(object):
             i = i+1
 
     def evaluate_n2v(self,utils):
-        self.score_pos = np.zeros(len(self.pos_test_edges))
+        self.score_pos = np.zeros(self.test_number_pos)
         #self.score_pos = np.zeros(self.test_number)
         i = 0
         for test_sample in self.pos_test_edges:
-            if i == self.test_number - 1:
+            if i == self.test_number_pos - 1:
                 break
             x_n2v1 = self.get_test_embed_n2v(test_sample[0],utils)
             x_n2v2 = self.get_test_embed_n2v(test_sample[1],utils)
@@ -103,9 +104,9 @@ class evaluation(object):
 
         i = 0
         #self.score_neg = np.zeros(len(self.neg_test_edges))
-        self.score_neg = np.zeros(self.test_number)
+        self.score_neg = np.zeros(self.test_number_neg)
         for test_sample in self.neg_test_edges:
-            if i == self.test_number - 1:
+            if i == self.test_number_neg - 1:
                 break
             x_n2v1 = self.get_test_embed_n2v(test_sample[0],utils)
             x_n2v2 = self.get_test_embed_n2v(test_sample[1],utils)
@@ -117,11 +118,11 @@ class evaluation(object):
             i = i+1
 
     def evaluate_combined(self,utils):
-        self.score_pos = np.zeros(len(self.pos_test_edges))
+        self.score_pos = np.zeros(self.test_number_pos)
         #self.score_pos = np.zeros(self.test_number)
         i = 0
         for test_sample in self.pos_test_edges:
-            if i == self.test_number - 1:
+            if i == self.test_number_pos - 1:
                 break
             x_gcn1 = self.get_test_embed_mfgcn(test_sample[0], utils)
             x_gcn2 = self.get_test_embed_mfgcn(test_sample[1], utils)
@@ -133,13 +134,13 @@ class evaluation(object):
             embed2_norm = embed2 / np.linalg.norm(embed2)
             self.score_pos[i] = np.sum(np.multiply(embed1_norm, embed2_norm))
             i = i + 1
-            print(i)
+            #print(i)
 
         i = 0
         # self.score_neg = np.zeros(len(self.neg_test_edges))
-        self.score_neg = np.zeros(self.test_number)
+        self.score_neg = np.zeros(self.test_number_neg)
         for test_sample in self.neg_test_edges:
-            if i == self.test_number - 1:
+            if i == self.test_number_neg - 1:
                 break
             x_gcn1 = self.get_test_embed_mfgcn(test_sample[0], utils)
             x_gcn2 = self.get_test_embed_mfgcn(test_sample[1], utils)
@@ -151,9 +152,9 @@ class evaluation(object):
             embed2_norm = embed2 / np.linalg.norm(embed2)
             self.score_neg[i] = np.sum(np.multiply(embed1_norm, embed2_norm))
             i = i + 1
-            print(i)
+            #print(i)
 
-def cal_auc(score_pos,score_neg,test_number_pos,test_number_neg,roc_resolution):
+def cal_auc(score_pos,score_neg,roc_resolution,test_number_pos,test_number_neg):
     threshold = -1
     tp_rates = []
     fp_rates = []
@@ -164,28 +165,50 @@ def cal_auc(score_pos,score_neg,test_number_pos,test_number_neg,roc_resolution):
         tp_rates.append(tpr)
         fp_rates.append(fpr)
         threshold += roc_resolution
+    area = 0
+    tp_rates.reverse()
+    fp_rates.reverse()
+    for i in range(len(tp_rates)-1):
+        x = fp_rates[i+1]-fp_rates[i]
+        y = (tp_rates[i+1]+tp_rates[i])/2
+        area += x*y
+    return tp_rates,fp_rates,area
 
-    return tp_rates,fp_rates
+class Plot_roc(object):
+    def __init__(self):
+        self.setup_roc()
 
-def plot_roc(tp_rates,fp_rates):
-    plt.xlabel("False positive rate")
-    plt.ylabel("True positive rate")
-    plt.title("ROC curve", fontsize=14)
-    plt.xlim(0.0,1.0)
-    plt.ylim(0.0,1.0)
-    #tp_rates = np.array(tp_rates)
-    #fp_rates = np.array(fp_rates)
-    plt.plot(fp_rates,tp_rates,color='blue',linewidth=1, label='n2v')
-    x = [0.0,1.0]
-    plt.plot(x,x,linestyle='dashed',color='red',linewidth=2,label='random')
-    plt.legend(loc='lower right')
-    plt.show()
+    def setup_roc(self):
+        plt.xlabel("False positive rate")
+        plt.ylabel("True positive rate")
+        plt.title("ROC curve", fontsize=14)
+        plt.xlim(0.0, 1.0)
+        plt.ylim(0.0, 1.0)
+        x = [0.0, 1.0]
+        plt.plot(x, x, linestyle='dashed', color='red', linewidth=2, label='random')
+    def add_roc_curve(self, tp_rates,fp_rates,color,label):
+        #tp_rates = np.array(tp_rates)
+        #fp_rates = np.array(fp_rates)
+        plt.plot(fp_rates,tp_rates,color=color,linewidth=1, label=label)
+    def show_plot(self):
+        plt.legend(loc='lower right')
+        plt.show()
 
 def write_file(rates,name):
     file = open(name,'w')
     for element in rates:
         print>>file, element
     file.close
+
+def read_file(name):
+    file = open(name)
+    rates = []
+    for line in file:
+        line = line.rstrip('\n')
+        rates.append(line)
+    rates = [np.float(i) for i in rates]
+    rates = np.array(rates)
+    return rates
 
 
 

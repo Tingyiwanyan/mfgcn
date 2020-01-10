@@ -5,10 +5,10 @@ from evaluation import evaluation
 
 if __name__ == "__main__":
 
-  utils = utils(2,2)
+  utils = utils(2,3)
   utils.config_train_test()
   utils.config_model()
   utils.init_walk_prob()
-  #utils.train()
+  utils.train()
   #evl = evaluation(utils)
   #evl.evaluate(utils)
