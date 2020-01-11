@@ -8,10 +8,9 @@ from walk import n2v_walk
 
 
 class utils(model_optimization):
-    def __init__(self,data_set,option):
-        model_optimization.__init__(self,data_set,option)
+    def __init__(self,data_set,option,option_lp_nc):
+        model_optimization.__init__(self,data_set,option,option_lp_nc)
         self.n2v_walk = n2v_walk(self.G,1,0.5)
-        self.data_set = data_set
         #self.mean_count = model.mean_count
         #self.mean_top = model.mean_top
 
@@ -385,6 +384,7 @@ class utils(model_optimization):
         mini_batch_raw, start_nodes = self.get_batch_BFS(start_index_)
         mini_batch_y = np.zeros((self.batch_size, self.data_length))
         mini_batch_x_label = np.zeros((self.batch_size, self.data_length))
+        mini_batch_y_label = np.zeros((self.batch_size, self.class_num))
         #mini_batch_y_mean_pool = np.zeros(3)
 
         batch_center_x = self.get_minibatch(start_nodes)
@@ -435,10 +435,18 @@ class utils(model_optimization):
                 indexy = self.G.node[j]['node_index']
                 mini_batch_y[i][indexy] = 1
 
-        return mini_batch_integral, mini_batch_y, mini_batch_x_label, mini_batch_y_mean_pool, batch_center_x, \
-               mini_batch_integral_n2v
+        for i in range(self.batch_size):
+            indexy = self.G.node[start_nodes[i]]['label']
+            mini_batch_y_label[i][indexy] = 1
 
-    def train(self):
+        return mini_batch_integral, mini_batch_y, mini_batch_x_label, mini_batch_y_mean_pool, batch_center_x, \
+               mini_batch_integral_n2v, mini_batch_y_label
+
+    def train_lp(self):
+        """
+        training procedure for transductive link prediction
+        :return:
+        """
         G_num = len(self.G.nodes())
         iter_num = np.int(np.floor(G_num/self.batch_size))
         k = 0
@@ -448,7 +456,7 @@ class utils(model_optimization):
             print(k)
             for j in range(iter_num):
                 sample_index = j*self.batch_size #np.int(np.floor(np.random.uniform(0, )))
-                mini_batch_integral, mini_batch_y, mini_batch_x_label, mini_batch_y_mean_pool, mini_batch_x, mini_batch_integral_n2v= \
+                mini_batch_integral, mini_batch_y, mini_batch_x_label, mini_batch_y_mean_pool, mini_batch_x, mini_batch_integral_n2v, mini_batch_y_label = \
                     self.get_data_one_batch(sample_index)
                 if self.option == 1:
                     print("running mf_gcn")
@@ -461,11 +469,51 @@ class utils(model_optimization):
                     err_ = self.sess.run([self.negative_sum, self.train_step_auto], feed_dict=
                                                                             {self.x_n2v: mini_batch_integral_n2v,
                                                                              self.y_mean_pooling: mini_batch_y_mean_pool,
-                                                                             self.x_center: mini_batch_x})
+                                                                             self.x_center: mini_batch_x,
+                                                                             self.y_label: mini_batch_y_label})
                 if self.option == 3:
                     print("running structure+feature")
                     err_ = self.sess.run([self.negative_sum, self.train_step_auto], feed_dict=
                                                                             {self.x_n2v: mini_batch_integral_n2v,
-                                                                             self.x_gcn: mini_batch_integral})
+                                                                             self.x_gcn: mini_batch_integral,
+                                                                             self.y_label:mini_batch_y_label})
+                print(err_[0])
+            k = k + 1
+
+    def train_nc(self):
+        """
+        training procedure for transductive node classification and inductive node classification
+        :return:
+        """
+        G_num = len(self.train_nodes)
+        iter_num = np.int(np.floor(G_num / self.batch_size))
+        k = 0
+        epoch = 2
+        while (k < epoch):
+            print("training in epoch")
+            print(k)
+            for j in range(iter_num):
+                sample_index = j * self.batch_size  # np.int(np.floor(np.random.uniform(0, )))
+                mini_batch_integral, mini_batch_y, mini_batch_x_label, mini_batch_y_mean_pool, mini_batch_x, mini_batch_integral_n2v, mini_batch_y_label = \
+                    self.get_data_one_batch(sample_index)
+                if self.option == 1:
+                    print("running mf_gcn")
+                    err_ = self.sess.run([self.negative_sum, self.train_step_auto], feed_dict=
+                    {self.x_gcn: mini_batch_integral,
+                     self.y_mean_pooling: mini_batch_y_mean_pool,
+                     self.x_center: mini_batch_x})
+                if self.option == 2:
+                    print("running n2v")
+                    err_ = self.sess.run([self.negative_sum, self.train_step_auto], feed_dict=
+                    {self.x_n2v: mini_batch_integral_n2v,
+                     self.y_mean_pooling: mini_batch_y_mean_pool,
+                     self.x_center: mini_batch_x,
+                     self.y_label: mini_batch_y_label})
+                if self.option == 3:
+                    print("running structure+feature")
+                    err_ = self.sess.run([self.negative_sum, self.train_step_auto], feed_dict=
+                    {self.x_n2v: mini_batch_integral_n2v,
+                     self.x_gcn: mini_batch_integral,
+                     self.y_label: mini_batch_y_label})
                 print(err_[0])
             k = k + 1

@@ -55,7 +55,7 @@ class evaluation(object):
         return mini_batch_integral,mini_batch_integral_n2v
 
 
-    def evaluate(self,utils):
+    def evaluate_lp(self,utils):
         self.score_pos = np.zeros(self.test_number_pos)
         #self.score_pos = np.zeros(self.test_number)
         i = 0
@@ -86,7 +86,7 @@ class evaluation(object):
             self.score_neg[i] = np.sum(np.multiply(embed1_norm,embed2_norm))
             i = i+1
 
-    def evaluate_n2v(self,utils):
+    def evaluate_n2v_lp(self,utils):
         self.score_pos = np.zeros(self.test_number_pos)
         #self.score_pos = np.zeros(self.test_number)
         i = 0
@@ -117,7 +117,7 @@ class evaluation(object):
             self.score_neg[i] = np.sum(np.multiply(embed1_norm,embed2_norm))
             i = i+1
 
-    def evaluate_combined(self,utils):
+    def evaluate_combined_lp(self,utils):
         self.score_pos = np.zeros(self.test_number_pos)
         #self.score_pos = np.zeros(self.test_number)
         i = 0
@@ -153,6 +153,21 @@ class evaluation(object):
             self.score_neg[i] = np.sum(np.multiply(embed1_norm, embed2_norm))
             i = i + 1
             #print(i)
+    def evaluate_n2v_nc(self,utils):
+        i = 0
+        for test_sample in self.nodes:
+            if i == 3000:
+                break
+            x_gcn1 = self.get_test_embed_mfgcn(test_sample[0], utils)
+            x_gcn2 = self.get_test_embed_mfgcn(test_sample[1], utils)
+            x_n2v1 = self.get_test_embed_n2v(test_sample[0], utils)
+            x_n2v2 = self.get_test_embed_n2v(test_sample[1], utils)
+            embed1 = utils.sess.run([utils.x_origin], feed_dict={utils.x_n2v: x_n2v1, utils.x_gcn: x_gcn1})[0][0, 0, :]
+            embed2 = utils.sess.run([utils.x_origin], feed_dict={utils.x_n2v: x_n2v2, utils.x_gcn: x_gcn2})[0][0, 0, :]
+            embed1_norm = embed1 / np.linalg.norm(embed1)
+            embed2_norm = embed2 / np.linalg.norm(embed2)
+            self.score_pos[i] = np.sum(np.multiply(embed1_norm, embed2_norm))
+            i = i + 1
 
 def cal_auc(score_pos,score_neg,roc_resolution,test_number_pos,test_number_neg):
     threshold = -1
