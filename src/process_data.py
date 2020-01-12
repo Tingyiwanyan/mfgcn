@@ -19,12 +19,12 @@ class Data_process(Data_loading):
         self.n_nodes = self.G.number_of_nodes()
         self.n_non_edges = None
         self.G_total = self.G.copy()
-        self.train_inductive_G = self.G.copy()
+        #self.train_inductive_G = self.G.copy()
         self.rnd = np.random.RandomState(seed=None)
         self.train_cut_edge = None
         self.prop_pos = 0.5
         self.prop_neg = 0.5
-        self.prop_nc = 0.7
+        self.prop_nc = 0.5
         self.npos = np.int(self.prop_pos*self.n_edges)
         self.n_nc = np.int(self.prop_nc*self.n_nodes)
         self.nneg = None
@@ -58,7 +58,7 @@ class Data_process(Data_loading):
 
     def generate_train_node(self):
         rnd_index = self.rnd.choice(len(self.nodes), self.n_nc, replace=False)
-        self.train_nodes = [self.nodes[i] for i in rnd_inx]
+        self.train_nodes = [self.nodes[i] for i in rnd_index]
         self.test_nodes = [x for x in self.nodes if x not in self.train_nodes]
 
 
@@ -74,6 +74,7 @@ class Data_process(Data_loading):
             """
             generate train nodes for transductive node classification
             """
+            self.non_edges_dic()
             self.generate_train_node()
 
 

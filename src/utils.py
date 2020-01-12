@@ -166,8 +166,18 @@ class utils(model_optimization):
         nodes = np.array(self.G.nodes())
         for i in range(self.batch_size):
             #walk_single = np.array(self.BFS_search(nodes[i + start_index]))
-            walk_single = np.array(self.n2v_walk.node2vec_walk(self.walk_length,nodes[i + start_index]))
-            batch_start_nodes.append(nodes[i + start_index])
+            if self.option_lp_nc == 1:
+                """
+                task for link prediction
+                """
+                walk_single = np.array(self.n2v_walk.node2vec_walk(self.walk_length,nodes[i + start_index]))
+                batch_start_nodes.append(nodes[i + start_index])
+            if self.option_lp_nc == 2:
+                """
+                task for node classification
+                """
+                walk_single = np.array(self.n2v_walk.node2vec_walk(self.walk_length, self.train_nodes[i + start_index]))
+                batch_start_nodes.append(self.train_nodes[i + start_index])
             walk[i, :] = walk_single
         return walk, batch_start_nodes
 
@@ -442,12 +452,12 @@ class utils(model_optimization):
         return mini_batch_integral, mini_batch_y, mini_batch_x_label, mini_batch_y_mean_pool, batch_center_x, \
                mini_batch_integral_n2v, mini_batch_y_label
 
-    def train_lp(self):
-        """
-        training procedure for transductive link prediction
-        :return:
-        """
-        G_num = len(self.G.nodes())
+    def train(self):
+        if self.option_lp_nc == 1:
+            G_num = len(self.G.nodes())
+
+        if self.option_lp_nc == 2:
+            G_num = len(self.train_nodes)
         iter_num = np.int(np.floor(G_num/self.batch_size))
         k = 0
         epoch = 2
@@ -463,57 +473,34 @@ class utils(model_optimization):
                     err_ = self.sess.run([self.negative_sum, self.train_step_auto], feed_dict=
                                                                              {self.x_gcn: mini_batch_integral,
                                                                               self.y_mean_pooling: mini_batch_y_mean_pool,
-                                                                              self.x_center: mini_batch_x})
+                                                                              self.x_center: mini_batch_x,
+                                                                              self.y_label:mini_batch_y_label})
+                    print(err_[0])
                 if self.option == 2:
                     print("running n2v")
-                    err_ = self.sess.run([self.negative_sum, self.train_step_auto], feed_dict=
+                    err_ = self.sess.run([self.negative_sum, self.train_step_neg], feed_dict=
                                                                             {self.x_n2v: mini_batch_integral_n2v,
                                                                              self.y_mean_pooling: mini_batch_y_mean_pool,
                                                                              self.x_center: mini_batch_x,
                                                                              self.y_label: mini_batch_y_label})
+                    err_sup = self.sess.run([self.cross_entropy, self.train_step_cross_entropy], feed_dict=
+                                                                            {self.x_n2v: mini_batch_integral_n2v,
+                                                                             self.y_mean_pooling: mini_batch_y_mean_pool,
+                                                                             self.x_center: mini_batch_x,
+                                                                             self.y_label: mini_batch_y_label})
+                    print(err_[0])
+                    print(err_sup[0])
                 if self.option == 3:
                     print("running structure+feature")
-                    err_ = self.sess.run([self.negative_sum, self.train_step_auto], feed_dict=
+                    err_ = self.sess.run([self.negative_sum, self.train_step_neg], feed_dict=
                                                                             {self.x_n2v: mini_batch_integral_n2v,
                                                                              self.x_gcn: mini_batch_integral,
                                                                              self.y_label:mini_batch_y_label})
-                print(err_[0])
-            k = k + 1
-
-    def train_nc(self):
-        """
-        training procedure for transductive node classification and inductive node classification
-        :return:
-        """
-        G_num = len(self.train_nodes)
-        iter_num = np.int(np.floor(G_num / self.batch_size))
-        k = 0
-        epoch = 2
-        while (k < epoch):
-            print("training in epoch")
-            print(k)
-            for j in range(iter_num):
-                sample_index = j * self.batch_size  # np.int(np.floor(np.random.uniform(0, )))
-                mini_batch_integral, mini_batch_y, mini_batch_x_label, mini_batch_y_mean_pool, mini_batch_x, mini_batch_integral_n2v, mini_batch_y_label = \
-                    self.get_data_one_batch(sample_index)
-                if self.option == 1:
-                    print("running mf_gcn")
-                    err_ = self.sess.run([self.negative_sum, self.train_step_auto], feed_dict=
-                    {self.x_gcn: mini_batch_integral,
-                     self.y_mean_pooling: mini_batch_y_mean_pool,
-                     self.x_center: mini_batch_x})
-                if self.option == 2:
-                    print("running n2v")
-                    err_ = self.sess.run([self.negative_sum, self.train_step_auto], feed_dict=
-                    {self.x_n2v: mini_batch_integral_n2v,
-                     self.y_mean_pooling: mini_batch_y_mean_pool,
-                     self.x_center: mini_batch_x,
-                     self.y_label: mini_batch_y_label})
-                if self.option == 3:
-                    print("running structure+feature")
-                    err_ = self.sess.run([self.negative_sum, self.train_step_auto], feed_dict=
-                    {self.x_n2v: mini_batch_integral_n2v,
-                     self.x_gcn: mini_batch_integral,
-                     self.y_label: mini_batch_y_label})
-                print(err_[0])
+                    err_sup = self.sess.run([self.cross_entropy, self.train_step_cross_entropy], feed_dict=
+                                                                            {self.x_n2v: mini_batch_integral_n2v,
+                                                                             self.x_gcn: mini_batch_integral,
+                                                                             self.y_label: mini_batch_y_label
+                                                                             })
+                    print(err_[0])
+                    print(err_sup[0])
             k = k + 1

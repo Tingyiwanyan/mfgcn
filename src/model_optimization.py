@@ -50,6 +50,7 @@ class model_optimization(Data_process):
         self.Dense4_n2v = None
         self.combined_embed = None
         self.option = option
+        self.filter_num = 30
 
 
         """
@@ -101,9 +102,10 @@ class model_optimization(Data_process):
         self.x_origin = None
         self.Decoding_reduce = None
 
-        self.logits = None
+        #self.logits = None
 
     def build_first_layer(self):
+        """
         Dense_gcn = tf.layers.dense(inputs=self.x_gcn,
                                     units=self.latent_dim_gcn,
                                     kernel_initializer=tf.keras.initializers.he_normal(seed=None),
@@ -203,6 +205,8 @@ class model_optimization(Data_process):
                                       units=self.latent_dim_gcn,
                                       kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                       activation=tf.nn.relu)
+        """
+
 
         """
         Lable for link prediction
@@ -283,56 +287,6 @@ class model_optimization(Data_process):
         """
         Implement sgnn with new structure
         """
-        idx_origin = tf.constant([0])
-        idx_skip = tf.constant([i + 1 for i in range(self.walk_length)])
-        idx_negative = tf.constant([i + 1 + self.walk_length for i in range(self.negative_sample_size)])
-
-        # x_origin = tf.gather(x_gcn,idx_origin,axis=1)
-        # x_skip = tf.gather(x_gcn,idx_skip,axis=1)
-        # x_negative = tf.gather(x_gcn,idx_negative,axis=1)
-
-        # x_output = tf.squeeze(x_origin)
-        if self.option == 1:
-            # doc_regularization = tf.multiply(self.Dense_layer_fc_gcn, self.Dense_layer_fc_gcn)
-            self.x_origin = tf.gather(self.Dense_layer_fc_gcn, idx_origin, axis=1)
-            self.x_skip = tf.gather(self.Dense_layer_fc_gcn, idx_skip, axis=1)
-            self.x_negative = tf.gather(self.Dense_layer_fc_gcn, idx_negative, axis=1)
-        if self.option == 2:
-            # doc_regularization = tf.multiply(self.Dense4_n2v, self.Dense4_n2v)
-            self.x_origin = tf.gather(self.Dense4_n2v, idx_origin, axis=1)
-            self.x_skip = tf.gather(self.Dense4_n2v, idx_skip, axis=1)
-            self.x_negative = tf.gather(self.Dense4_n2v, idx_negative, axis=1)
-
-        if self.option == 3:
-            """
-            combine structure and feature
-            """
-            """
-            self.x_origin_gcn = tf.gather(self.Dense_layer_fc_gcn, idx_origin, axis=1)
-            self.x_skip_gcn = tf.gather(self.Dense_layer_fc_gcn, idx_skip, axis=1)
-            self.x_negative_gcn = tf.gather(self.Dense_layer_fc_gcn, idx_negative, axis=1)
-
-            self.x_origin_n2v = tf.gather(self.Dense4_n2v, idx_origin, axis=1)
-            self.x_skip_n2v = tf.gather(self.Dense4_n2v, idx_skip, axis=1)
-            self.x_negative_n2v = tf.gather(self.Dense4_n2v, idx_negative, axis=1)
-
-            self.x_origin = tf.concat([self.x_origin_gcn, self.x_origin_n2v], axis=2)
-            self.x_skip = tf.concat([self.x_skip_gcn, self.x_skip_n2v], axis=2)
-            self.x_negative = tf.concat([self.x_negative_gcn, self.x_negative_n2v], axis=2)
-            """
-
-            self.Dense_concat = tf.concat([self.Dense_layer_fc_gcn, self.Dense4_n2v], axis=2)
-
-            self.Dense_combine = tf.layers.dense(inputs=self.Dense_concat,
-                                                 units=100,
-                                                 kernel_initializer=tf.keras.initializers.he_normal(seed=None),
-                                                 activation=tf.nn.elu,
-                                                 name='embedding_concat')
-
-            self.x_origin = tf.gather(self.Dense_combine, idx_origin, axis=1)
-            self.x_skip = tf.gather(self.Dense_combine, idx_skip, axis=1)
-            self.x_negative = tf.gather(self.Dense_combine, idx_negative, axis=1)
-
             #self.latent_dim = 2 * self.latent_dim
 
         #sum_doc_regularization = tf.reduce_sum(tf.reduce_sum(doc_regularization, axis=2), axis=1)
@@ -406,12 +360,66 @@ class model_optimization(Data_process):
         """
         supervised loss
         """
-        self.logits = tf.layers.dense(inputs=self.x_origin,
+        self.logit_decode = tf.layers.dense(inputs=self.x_origin,
                                         units=self.class_num,
                                         kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                         activation=tf.nn.sigmoid)
-        self.loss_sup = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=self.y_label,logits=self.logits))
+        self.logit_softmax = tf.nn.softmax(self.logit_decode)
+        self.logit_softmax_reduce = tf.squeeze(self.logit_softmax)
+        #self.loss_sup = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=self.y_label,logits=self.logits))
+        #self.loss_sup = tf.losses.mean_squared_error(self.y_label, self.logit_softmax_reduce)
+        self.cross_entropy = tf.reduce_mean(tf.math.negative(tf.reduce_sum(tf.math.multiply(self.y_label,tf.log(self.logit_softmax_reduce)), reduction_indices=[1])))
 
+    def pick_model(self):
+        idx_origin = tf.constant([0])
+        idx_skip = tf.constant([i + 1 for i in range(self.walk_length)])
+        idx_negative = tf.constant([i + 1 + self.walk_length for i in range(self.negative_sample_size)])
+
+        # x_origin = tf.gather(x_gcn,idx_origin,axis=1)
+        # x_skip = tf.gather(x_gcn,idx_skip,axis=1)
+        # x_negative = tf.gather(x_gcn,idx_negative,axis=1)
+
+        # x_output = tf.squeeze(x_origin)
+        if self.option == 1:
+            # doc_regularization = tf.multiply(self.Dense_layer_fc_gcn, self.Dense_layer_fc_gcn)
+            self.x_origin = tf.gather(self.Dense_layer_fc_gcn, idx_origin, axis=1)
+            self.x_skip = tf.gather(self.Dense_layer_fc_gcn, idx_skip, axis=1)
+            self.x_negative = tf.gather(self.Dense_layer_fc_gcn, idx_negative, axis=1)
+        if self.option == 2:
+            # doc_regularization = tf.multiply(self.Dense4_n2v, self.Dense4_n2v)
+            self.x_origin = tf.gather(self.Dense4_n2v, idx_origin, axis=1)
+            self.x_skip = tf.gather(self.Dense4_n2v, idx_skip, axis=1)
+            self.x_negative = tf.gather(self.Dense4_n2v, idx_negative, axis=1)
+
+        if self.option == 3:
+            """
+            combine structure and feature
+            """
+            """
+            self.x_origin_gcn = tf.gather(self.Dense_layer_fc_gcn, idx_origin, axis=1)
+            self.x_skip_gcn = tf.gather(self.Dense_layer_fc_gcn, idx_skip, axis=1)
+            self.x_negative_gcn = tf.gather(self.Dense_layer_fc_gcn, idx_negative, axis=1)
+
+            self.x_origin_n2v = tf.gather(self.Dense4_n2v, idx_origin, axis=1)
+            self.x_skip_n2v = tf.gather(self.Dense4_n2v, idx_skip, axis=1)
+            self.x_negative_n2v = tf.gather(self.Dense4_n2v, idx_negative, axis=1)
+
+            self.x_origin = tf.concat([self.x_origin_gcn, self.x_origin_n2v], axis=2)
+            self.x_skip = tf.concat([self.x_skip_gcn, self.x_skip_n2v], axis=2)
+            self.x_negative = tf.concat([self.x_negative_gcn, self.x_negative_n2v], axis=2)
+            """
+
+            self.Dense_concat = tf.concat([self.Dense_layer_fc_gcn, self.Dense4_n2v], axis=2)
+
+            self.Dense_combine = tf.layers.dense(inputs=self.Dense_concat,
+                                                 units=100,
+                                                 kernel_initializer=tf.keras.initializers.he_normal(seed=None),
+                                                 activation=tf.nn.elu,
+                                                 name='embedding_concat')
+
+            self.x_origin = tf.gather(self.Dense_combine, idx_origin, axis=1)
+            self.x_skip = tf.gather(self.Dense_combine, idx_skip, axis=1)
+            self.x_negative = tf.gather(self.Dense_combine, idx_negative, axis=1)
 
     def config_model(self):
         if self.option == 1:
@@ -429,13 +437,15 @@ class model_optimization(Data_process):
             self.n2v()
             #self.supervised_loss()
 
+        self.pick_model()
         self.SGNN_loss()
         self.supervised_loss()
 
-        self.total_loss = tf.math.add(self.loss_sup, self.negative_sum)
+        #self.total_loss = tf.math.add(self.loss_sup, self.negative_sum)
 
         #self.train_step_auto = tf.train.AdamOptimizer(1e-3).minimize(self.negative_sum)
-        self.train_step_auto = tf.train.AdamOptimizer(1e-3).minimize(self.total_loss)
+        self.train_step_neg = tf.train.AdamOptimizer(1e-3).minimize(self.negative_sum)
+        self.train_step_cross_entropy = tf.train.AdamOptimizer(1e-3).minimize(self.cross_entropy)
 
         self.sess = tf.InteractiveSession()
         tf.global_variables_initializer().run()

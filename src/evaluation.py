@@ -7,11 +7,11 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 class evaluation(object):
-    def __init__(self,utils):
+    def __init__(self,utils,option_lp_nc):
         self.G = utils.G
         self.data_length = len(list(self.G.nodes()))
         self.attribute_size = utils.attribute_size
-        self.pos_test_edges = utils.train_cut_edges
+        self.pos_test_edges = None
         self.neg_test_edges = utils.neg_edge_test
         self.batch_size = 1
         self.walk_length = utils.walk_length
@@ -20,7 +20,12 @@ class evaluation(object):
         self.score_neg = None
         self.test_number_neg = 7000
         self.roc_resolution = 0.1
-        self.test_number_pos = len(self.pos_test_edges)
+        self.test_number_pos = None
+        self.train_nodes = utils.train_nodes
+        self.test_nodes = utils.test_nodes
+        if option_lp_nc == 1:
+            self.pos_test_edges = utils.train_cut_edges
+            self.test_number_pos = len(self.pos_test_edges)
 
     def get_test_embed_mfgcn(self,node,utils):
         mini_batch_integral = np.zeros(
@@ -153,21 +158,27 @@ class evaluation(object):
             self.score_neg[i] = np.sum(np.multiply(embed1_norm, embed2_norm))
             i = i + 1
             #print(i)
-    def evaluate_n2v_nc(self,utils):
-        i = 0
-        for test_sample in self.nodes:
-            if i == 3000:
-                break
-            x_gcn1 = self.get_test_embed_mfgcn(test_sample[0], utils)
-            x_gcn2 = self.get_test_embed_mfgcn(test_sample[1], utils)
-            x_n2v1 = self.get_test_embed_n2v(test_sample[0], utils)
-            x_n2v2 = self.get_test_embed_n2v(test_sample[1], utils)
-            embed1 = utils.sess.run([utils.x_origin], feed_dict={utils.x_n2v: x_n2v1, utils.x_gcn: x_gcn1})[0][0, 0, :]
-            embed2 = utils.sess.run([utils.x_origin], feed_dict={utils.x_n2v: x_n2v2, utils.x_gcn: x_gcn2})[0][0, 0, :]
-            embed1_norm = embed1 / np.linalg.norm(embed1)
-            embed2_norm = embed2 / np.linalg.norm(embed2)
-            self.score_pos[i] = np.sum(np.multiply(embed1_norm, embed2_norm))
-            i = i + 1
+    def evaluate_combine_nc(self,utils):
+        predict_correct = 0.0
+        for test_sample in self.test_nodes:
+            x_n2v = self.get_test_embed_n2v(test_sample,utils)
+            x = self.get_test_embed_mfgcn(test_sample,utils)
+            logit = utils.sess.run([utils.logit_softmax_reduce],feed_dict={utils.x_n2v:x_n2v,utils.x_gcn:x})
+            predict = np.where(logit[0] == logit[0].max())[0][0]
+            if predict == utils.G.nodes[test_sample]['label']:
+                predict_correct += 1
+        self.tp_rate = predict_correct/np.float(len(self.test_nodes))
+
+    def evaluate_n2v(self,utils):
+        predict_correct = 0.0
+        for test_sample in self.test_nodes:
+            x_n2v = self.get_test_embed_n2v(test_sample,utils)
+            #x = self.get_test_embed_mfgcn(test_sample,utils)
+            logit = utils.sess.run([utils.logit_softmax_reduce],feed_dict={utils.x_n2v:x_n2v})
+            predict = np.where(logit[0] == logit[0].max())[0][0]
+            if predict == utils.G.nodes[test_sample]['label']:
+                predict_correct += 1
+        self.tp_rate = predict_correct/np.float(len(self.test_nodes))
 
 def cal_auc(score_pos,score_neg,roc_resolution,test_number_pos,test_number_neg):
     threshold = -1

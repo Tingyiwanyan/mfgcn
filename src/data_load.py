@@ -9,6 +9,7 @@ class Data_loading(object):
         """
         pick data set
         """
+        self.data_set = data_set
         if data_set == 1:
             self.init_aminer()
         if data_set == 2:
