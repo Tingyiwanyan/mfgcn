@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import random
 import networkx as nx
 import math
+import time
 from model_optimization import model_optimization
 from walk import n2v_walk
 
@@ -461,10 +462,13 @@ class utils(model_optimization):
         iter_num = np.int(np.floor(G_num/self.batch_size))
         k = 0
         epoch = 2
+
         while(k<epoch):
+
             print("training in epoch")
             print(k)
             for j in range(iter_num):
+                start_time = time.time()
                 sample_index = j*self.batch_size #np.int(np.floor(np.random.uniform(0, )))
                 mini_batch_integral, mini_batch_y, mini_batch_x_label, mini_batch_y_mean_pool, mini_batch_x, mini_batch_integral_n2v, mini_batch_y_label = \
                     self.get_data_one_batch(sample_index)
@@ -503,4 +507,5 @@ class utils(model_optimization):
                                                                              })
                     print(err_[0])
                     print(err_sup[0])
+                print("one iteration uses %s seconds" % (time.time() - start_time))
             k = k + 1

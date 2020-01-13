@@ -169,7 +169,7 @@ class evaluation(object):
                 predict_correct += 1
         self.tp_rate = predict_correct/np.float(len(self.test_nodes))
 
-    def evaluate_n2v(self,utils):
+    def evaluate_n2v_nc(self,utils):
         predict_correct = 0.0
         for test_sample in self.test_nodes:
             x_n2v = self.get_test_embed_n2v(test_sample,utils)

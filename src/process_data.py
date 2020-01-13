@@ -58,6 +58,7 @@ class Data_process(Data_loading):
 
     def generate_train_node(self):
         rnd_index = self.rnd.choice(len(self.nodes), self.n_nc, replace=False)
+        #rnd_index = range(self.n_nc)
         self.train_nodes = [self.nodes[i] for i in rnd_index]
         self.test_nodes = [x for x in self.nodes if x not in self.train_nodes]
 
