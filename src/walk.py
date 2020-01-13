@@ -5,12 +5,13 @@ import networkx as nx
 import math
 
 class n2v_walk():
-    def __init__(self, nx_G, p, q):
+    def __init__(self, nx_G, p, q,walk_length):
         self.G = nx_G
         self.p = p
         self.q = q
+        self.walk_length = walk_length
 
-    def node2vec_walk(self, walk_length, start_node):
+    def node2vec_walk(self, start_node):
         '''
         Simulate a random walk starting from start node
         '''
@@ -18,7 +19,7 @@ class n2v_walk():
 
         walk = [start_node]
 
-        while len(walk) < walk_length:
+        while len(walk) < self.walk_length:
             cur = walk[-1]
             cur_nbrs = sorted(G.neighbors(cur))
             # print(cur_nbrs)

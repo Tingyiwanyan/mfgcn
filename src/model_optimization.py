@@ -18,12 +18,12 @@ class model_optimization(Data_process):
         Data_process.__init__(self,data_set,option_lp_nc)
         #self.G = G
         self.batch_size = 64
+        self.walk_length = 15
         if data_set == 1:
             """
             Aminer data
             """
             self.attribute_size = 5
-            self.walk_length = 10
             self.latent_dim = 100
             # latent_dim_second = 100
             self.latent_dim_gcn = 8
@@ -35,9 +35,8 @@ class model_optimization(Data_process):
             citeceer data set 
             """
             self.attribute_size = 3703
-            self.walk_length = 10
             self.latent_dim = 100
-            self.latent_dim_gcn = 8
+            self.latent_dim_gcn = 16
             self.latent_dim_gcn2 = 50
             self.negative_sample_size = 100
             self.class_num = 6
@@ -123,7 +122,7 @@ class model_optimization(Data_process):
         """
         self.h1 = tf.concat(self.Dense_gcn_layers,2)
 
-        self.Dense_layer_fc_gcn1 = tf.layers.dense(inputs=self.h1,
+        self.Dense_layer_fc_gcn = tf.layers.dense(inputs=self.h1,
                                                   units=self.latent_dim,
                                                   kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                                   activation=tf.nn.elu,)
@@ -292,7 +291,7 @@ class model_optimization(Data_process):
             self.Dense_concat = tf.concat([self.Dense_layer_fc_gcn, self.Dense4_n2v], axis=2)
 
             self.Dense_combine = tf.layers.dense(inputs=self.Dense_concat,
-                                                 units=100,
+                                                 units=self.latent_dim,
                                                  kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                                  activation=tf.nn.elu,
                                                  name='embedding_concat')
@@ -313,7 +312,7 @@ class model_optimization(Data_process):
 
         if self.option == 3:
             self.build_first_layer()
-            self.build_second_layer()
+            #self.build_second_layer()
             self.n2v()
             #self.supervised_loss()
 

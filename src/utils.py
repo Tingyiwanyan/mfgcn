@@ -9,9 +9,20 @@ from walk import n2v_walk
 
 
 class utils(model_optimization):
-    def __init__(self,data_set,option,option_lp_nc):
+    def __init__(self,data_set,option,option_lp_nc,option_walk):
         model_optimization.__init__(self,data_set,option,option_lp_nc)
-        self.n2v_walk = n2v_walk(self.G,1,0.5)
+        self.n2v_walk = n2v_walk(self.G,1,0.5,self.walk_length)
+        if option_walk == 1:
+            """
+            BFS statergy
+            """
+            self.walk_ = self.BFS_search
+        if option_walk == 2:
+            """
+            n2v stratergy
+            """
+            self.walk_ = self.n2v_walk.node2vec_walk
+            self.init_walk_prob()
         #self.mean_count = model.mean_count
         #self.mean_top = model.mean_top
 
@@ -171,13 +182,13 @@ class utils(model_optimization):
                 """
                 task for link prediction
                 """
-                walk_single = np.array(self.n2v_walk.node2vec_walk(self.walk_length,nodes[i + start_index]))
+                walk_single = np.array(self.walk_(nodes[i + start_index]))
                 batch_start_nodes.append(nodes[i + start_index])
             if self.option_lp_nc == 2:
                 """
                 task for node classification
                 """
-                walk_single = np.array(self.n2v_walk.node2vec_walk(self.walk_length, self.train_nodes[i + start_index]))
+                walk_single = np.array(self.walk_(self.train_nodes[i + start_index]))
                 batch_start_nodes.append(self.train_nodes[i + start_index])
             walk[i, :] = walk_single
         return walk, batch_start_nodes
