@@ -21,9 +21,10 @@ class visualization(object):
     def get_2d_rep(self):
         i = 0
         for node in self.test_nodes:
-            x_n2v = self.evl.get_test_embed_n2v(node,self.utils)
-            x = self.evl.get_test_embed_mfgcn(node,self.utils)
-            embed = self.utils.sess.run([self.utils.x_origin],feed_dict={self.utils.x_n2v:x_n2v,self.utils.x_gcn:x})[0][0, 0, :]
+            x_n2v= self.evl.get_test_embed_n2v(node,self.utils)
+            x,x_center = self.evl.get_test_embed_mfgcn(node,self.utils)
+            embed = self.utils.sess.run([self.utils.x_origin],feed_dict={self.utils.x_n2v:x_n2v,self.utils.x_gcn:x, \
+                                                                         self.utils.x_center:x_center})[0][0, 0, :]
             self.embedding_whole[i,:] = embed
             self.label_whole[i] = self.utils.G.nodes[node]['label']
             i = i + 1

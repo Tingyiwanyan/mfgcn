@@ -72,7 +72,8 @@ class model_optimization(Data_process):
         """
         Input of center node
         """
-        self.x_center = tf.placeholder(tf.float32, [None, self.attribute_size])
+        self.x_center = tf.placeholder(tf.float32,
+                                       [None, 1 + self.walk_length + self.negative_sample_size, self.attribute_size])
         """
         Input of target vector
         """
@@ -117,6 +118,7 @@ class model_optimization(Data_process):
                                     kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                     activation=tf.nn.relu)
             self.Dense_gcn_layers.append(Dense_gcn)
+        #self.Dense_gcn_layers.append(self.x_center)
         """
         Perform concatenation
         """
@@ -303,7 +305,7 @@ class model_optimization(Data_process):
     def config_model(self):
         if self.option == 1:
             self.build_first_layer()
-            self.build_second_layer()
+            #self.build_second_layer()
             #self.mse_loss()
 
         if self.option == 2:

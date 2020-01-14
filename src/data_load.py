@@ -14,6 +14,8 @@ class Data_loading(object):
             self.init_aminer()
         if data_set == 2:
             self.init_citceer()
+        if data_set == 3:
+            self.init_cora()
 
     def init_aminer(self):
         file = open("/home/tingyi/data/full_team_members_year_c_0rmd.txt")
