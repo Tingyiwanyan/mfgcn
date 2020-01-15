@@ -87,7 +87,6 @@ class utils(model_optimization):
     Get neighborhood from new data
     """
 
-
     def find_neighbor(self, node_index):
         author_id = self.G.nodes[node_index]['author_id']
         author_id2 = self.G.nodes[node_index]['author_id2']
@@ -230,6 +229,15 @@ class utils(model_optimization):
             index += 1
 
         return mini_batch_gcn_agg
+
+    """
+    get batch neighbor mean
+    """
+    def get_batch_mean_pooling_neighbor(self,index_vector):
+        mini_batch_mean_agg = np.zeros((self.batch_size,self.attribute_size))
+        index = 0
+        for node_index in index_vector:
+            single_gcn = self.
 
     """
     get batch n2v

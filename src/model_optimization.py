@@ -70,9 +70,15 @@ class model_optimization(Data_process):
         self.x_negative_n2v = tf.placeholder(tf.float32, [None, self.negative_sample_size, self.length])
 
         """
-        Input of center node
+        Input of center node(raw feature)
         """
         self.x_center = tf.placeholder(tf.float32,
+                                       [None, 1 + self.walk_length + self.negative_sample_size, self.attribute_size])
+
+        """
+        Input of mean pooling
+        """
+        self.x_mean_pool = tf.placeholder(tf.float32,
                                        [None, 1 + self.walk_length + self.negative_sample_size, self.attribute_size])
         """
         Input of target vector
@@ -127,7 +133,7 @@ class model_optimization(Data_process):
         self.Dense_layer_fc_gcn = tf.layers.dense(inputs=self.h1,
                                                   units=self.latent_dim,
                                                   kernel_initializer=tf.keras.initializers.he_normal(seed=None),
-                                                  activation=tf.nn.elu,)
+                                                  activation=tf.nn.elu)
                                                   #name='embedding_gcn')
 
     def build_second_layer(self):
@@ -148,8 +154,31 @@ class model_optimization(Data_process):
         self.Dense_layer_fc_gcn = tf.layers.dense(inputs=self.h2,
                                              units=self.latent_dim,
                                              kernel_initializer=tf.keras.initializers.he_normal(seed=None),
-                                             activation=tf.nn.elu,)
+                                             activation=tf.nn.elu)
                                              #name='embedding_gcn')
+
+    def build_raw_feature_layer(self):
+        Dense_raw = tf.layers.dense(input=self.x_center,
+                                    units = 500,
+                                    kernel_initializer=tf.keras.initializers.he_normal(seed=None),
+                                    activation=tf.nn.relu)
+
+        self.Dense_raw_final = tf.layers.dense(inputs=Dense_raw,
+                                             units=self.latent_dim,
+                                             kernel_initializer=tf.keras.initializers.he_normal(seed=None),
+                                             activation=tf.nn.elu)
+
+    def build_mean_pool_layer(self):
+        Dense_mean_pool = tf.layers.dense(input=self.x_mean_pool,
+                                    units=500,
+                                    kernel_initializer=tf.keras.initializers.he_normal(seed=None),
+                                    activation=tf.nn.relu)
+
+        self.Dense_mean_pool_final = tf.layers.dense(inputs=Dense_mean_pool,
+                                               units=self.latent_dim,
+                                               kernel_initializer=tf.keras.initializers.he_normal(seed=None),
+                                               activation=tf.nn.elu)
+
 
     def n2v(self):
 
@@ -301,6 +330,12 @@ class model_optimization(Data_process):
             self.x_origin = tf.gather(self.Dense_combine, idx_origin, axis=1)
             self.x_skip = tf.gather(self.Dense_combine, idx_skip, axis=1)
             self.x_negative = tf.gather(self.Dense_combine, idx_negative, axis=1)
+
+        if self.option = 4:
+            """
+            raw feature & mean pooling 
+            """
+            retun 1
 
     def config_model(self):
         if self.option == 1:
