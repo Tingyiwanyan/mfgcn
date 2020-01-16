@@ -30,15 +30,9 @@ class evaluation(object):
     def get_test_embed_mfgcn(self,node,utils):
         mini_batch_integral = np.zeros(
             (1, 1 + utils.walk_length + utils.negative_sample_size, utils.attribute_size))
-        mini_batch_integral_center = np.zeros(
-            (1, 1 + utils.walk_length + utils.negative_sample_size, utils.attribute_size))
-        #batch_center_x = self.get_minibatch(node)
         batch_GCN_agg = utils.get_batch_GCNagg([node])
-        batch_x_center = utils.get_minibatch([node])
-        #for i in range(self.batch_size):
         mini_batch_integral[0, 0, :] = batch_GCN_agg[0, :]
-        mini_batch_integral_center[0,0,:] = batch_x_center[0,:]
-        return mini_batch_integral, mini_batch_integral_center
+        return mini_batch_integral
 
     def get_test_embed_n2v(self,node,utils):
         mini_batch_integral_n2v = np.zeros(
@@ -49,19 +43,23 @@ class evaluation(object):
         mini_batch_integral_n2v[0, 0, :] = batch_n2v[0, :]
         return mini_batch_integral_n2v
 
-    def get_test_embed_combine(self,node,utils):
-        mini_batch_integral = np.zeros(
+    def get_test_embed_raw(self,node,utils):
+        mini_batch_integral_center = np.zeros(
             (1, 1 + utils.walk_length + utils.negative_sample_size, utils.attribute_size))
-        mini_batch_integral_n2v = np.zeros(
-            (1, 1 + utils.walk_length + utils.negative_sample_size, utils.length))
-        batch_GCN_agg = utils.get_batch_GCNagg([node])
-        # for i in range(self.batch_size):
-        mini_batch_integral[0, 0, :] = batch_GCN_agg[0, :]
-        batch_n2v = utils.get_batch_n2v([node])
-        # for i in range(self.batch_size):
-        mini_batch_integral_n2v[0, 0, :] = batch_n2v[0, :]
+        batch_x_center = utils.get_minibatch([node])
+        mini_batch_integral_center[0, 0, :] = batch_x_center[0, :]
+        return mini_batch_integral_center
 
-        return mini_batch_integral,mini_batch_integral_n2v
+
+    def get_test_embed_meanpool(self,node,utils):
+        mini_batch_integral_meanpool = np.zeros(
+            (1, 1 + utils.walk_length + utils.negative_sample_size, utils.attribute_size))
+        # batch_center_x = self.get_minibatch(node)
+        batch_meanpool = utils.get_batch_mean_pooling_neighbor([node])
+        # for i in range(self.batch_size):
+        mini_batch_integral_meanpool[0, 0, :] = batch_meanpool[0, :]
+        return mini_batch_integral_meanpool
+
 
 
     def evaluate_lp(self,utils):
@@ -71,12 +69,10 @@ class evaluation(object):
         for test_sample in self.pos_test_edges:
             if i == self.test_number_pos - 1:
                 break
-            x_gcn1,x_center1 = self.get_test_embed_mfgcn(test_sample[0],utils)
-            x_gcn2,x_center2 = self.get_test_embed_mfgcn(test_sample[1],utils)
-            embed1 = utils.sess.run([utils.Dense_layer_fc_gcn], feed_dict={utils.x_gcn: x_gcn1,
-                                                                           utils.x_center:x_center1})[0][0,0,:]
-            embed2 = utils.sess.run([utils.Dense_layer_fc_gcn], feed_dict={utils.x_gcn: x_gcn2,
-                                                                           utils.x_center:x_center2})[0][0,0,:]
+            x_gcn1 = self.get_test_embed_mfgcn(test_sample[0],utils)
+            x_gcn2 = self.get_test_embed_mfgcn(test_sample[1],utils)
+            embed1 = utils.sess.run([utils.Dense_layer_fc_gcn], feed_dict={utils.x_gcn: x_gcn1})[0][0,0,:]
+            embed2 = utils.sess.run([utils.Dense_layer_fc_gcn], feed_dict={utils.x_gcn: x_gcn2})[0][0,0,:]
             embed1_norm = embed1/np.linalg.norm(embed1)
             embed2_norm = embed2/np.linalg.norm(embed2)
             self.score_pos[i] = np.sum(np.multiply(embed1_norm,embed2_norm))
@@ -88,12 +84,10 @@ class evaluation(object):
         for test_sample in self.neg_test_edges:
             if i == self.test_number_neg - 1:
                 break
-            x_gcn1,x_center1 = self.get_test_embed_mfgcn(test_sample[0],utils)
-            x_gcn2,x_center2 = self.get_test_embed_mfgcn(test_sample[1],utils)
-            embed1 = utils.sess.run([utils.Dense_layer_fc_gcn], feed_dict={utils.x_gcn: x_gcn1,
-                                                                           utils.x_center: x_center1})[0][0,0,:]
-            embed2 = utils.sess.run([utils.Dense_layer_fc_gcn], feed_dict={utils.x_gcn: x_gcn2,
-                                                                           utils.x_center: x_center2})[0][0,0,:]
+            x_gcn1 = self.get_test_embed_mfgcn(test_sample[0],utils)
+            x_gcn2 = self.get_test_embed_mfgcn(test_sample[1],utils)
+            embed1 = utils.sess.run([utils.Dense_layer_fc_gcn], feed_dict={utils.x_gcn: x_gcn1})[0][0,0,:]
+            embed2 = utils.sess.run([utils.Dense_layer_fc_gcn], feed_dict={utils.x_gcn: x_gcn2})[0][0,0,:]
             embed1_norm = embed1 / np.linalg.norm(embed1)
             embed2_norm = embed2 / np.linalg.norm(embed2)
             self.score_neg[i] = np.sum(np.multiply(embed1_norm,embed2_norm))
@@ -137,14 +131,12 @@ class evaluation(object):
         for test_sample in self.pos_test_edges:
             if i == self.test_number_pos - 1:
                 break
-            x_gcn1, x_center1 = self.get_test_embed_mfgcn(test_sample[0], utils)
-            x_gcn2, x_center2 = self.get_test_embed_mfgcn(test_sample[1], utils)
+            x_gcn1 = self.get_test_embed_mfgcn(test_sample[0], utils)
+            x_gcn2 = self.get_test_embed_mfgcn(test_sample[1], utils)
             x_n2v1 = self.get_test_embed_n2v(test_sample[0], utils)
             x_n2v2 = self.get_test_embed_n2v(test_sample[1], utils)
-            embed1 = utils.sess.run([utils.x_origin], feed_dict={utils.x_n2v: x_n2v1,utils.x_gcn:x_gcn1,
-                                                                 utils.x_center:x_center1})[0][0, 0, :]
-            embed2 = utils.sess.run([utils.x_origin], feed_dict={utils.x_n2v: x_n2v2,utils.x_gcn:x_gcn2,
-                                                                 utils.x_center:x_center2})[0][0, 0, :]
+            embed1 = utils.sess.run([utils.x_origin], feed_dict={utils.x_n2v: x_n2v1,utils.x_gcn:x_gcn1})[0][0, 0, :]
+            embed2 = utils.sess.run([utils.x_origin], feed_dict={utils.x_n2v: x_n2v2,utils.x_gcn:x_gcn2})[0][0, 0, :]
             embed1_norm = embed1 / np.linalg.norm(embed1)
             embed2_norm = embed2 / np.linalg.norm(embed2)
             self.score_pos[i] = np.sum(np.multiply(embed1_norm, embed2_norm))
@@ -157,14 +149,12 @@ class evaluation(object):
         for test_sample in self.neg_test_edges:
             if i == self.test_number_neg - 1:
                 break
-            x_gcn1, x_center1 = self.get_test_embed_mfgcn(test_sample[0], utils)
-            x_gcn2, x_center2 = self.get_test_embed_mfgcn(test_sample[1], utils)
+            x_gcn1 = self.get_test_embed_mfgcn(test_sample[0], utils)
+            x_gcn2 = self.get_test_embed_mfgcn(test_sample[1], utils)
             x_n2v1 = self.get_test_embed_n2v(test_sample[0], utils)
             x_n2v2 = self.get_test_embed_n2v(test_sample[1], utils)
-            embed1 = utils.sess.run([utils.x_origin], feed_dict={utils.x_n2v: x_n2v1, utils.x_gcn: x_gcn1,
-                                                                 utils.x_center: x_center1})[0][0, 0, :]
-            embed2 = utils.sess.run([utils.x_origin], feed_dict={utils.x_n2v: x_n2v2, utils.x_gcn: x_gcn2,
-                                                                 utils.x_center: x_center2})[0][0, 0, :]
+            embed1 = utils.sess.run([utils.x_origin], feed_dict={utils.x_n2v: x_n2v1, utils.x_gcn: x_gcn1})[0][0, 0, :]
+            embed2 = utils.sess.run([utils.x_origin], feed_dict={utils.x_n2v: x_n2v2, utils.x_gcn: x_gcn2})[0][0, 0, :]
             embed1_norm = embed1 / np.linalg.norm(embed1)
             embed2_norm = embed2 / np.linalg.norm(embed2)
             self.score_neg[i] = np.sum(np.multiply(embed1_norm, embed2_norm))
@@ -174,9 +164,8 @@ class evaluation(object):
         predict_correct = 0.0
         for test_sample in self.test_nodes:
             x_n2v = self.get_test_embed_n2v(test_sample,utils)
-            x,x_center = self.get_test_embed_mfgcn(test_sample,utils)
-            logit = utils.sess.run([utils.logit_softmax_reduce],feed_dict={utils.x_n2v:x_n2v,utils.x_gcn:x,
-                                                                           utils.x_center:x_center})
+            x = self.get_test_embed_mfgcn(test_sample,utils)
+            logit = utils.sess.run([utils.logit_softmax_reduce],feed_dict={utils.x_n2v:x_n2v,utils.x_gcn:x})
             predict = np.where(logit[0] == logit[0].max())[0][0]
             if predict == utils.G.nodes[test_sample]['label']:
                 predict_correct += 1
@@ -192,6 +181,28 @@ class evaluation(object):
             if predict == utils.G.nodes[test_sample]['label']:
                 predict_correct += 1
         self.tp_rate = predict_correct/np.float(len(self.test_nodes))
+
+    def evaluate_combine_meanpool_nc(self,utils):
+        predict_correct = 0.0
+        for test_sample in self.test_nodes:
+            x_n2v = self.get_test_embed_n2v(test_sample, utils)
+            x = self.get_test_embed_meanpool(test_sample,utils)
+            logit = utils.sess.run([utils.logit_softmax_reduce], feed_dict={utils.x_mean_pool:x,utils.x_n2v:x_n2v})
+            predict = np.where(logit[0] == logit[0].max())[0][0]
+            if predict == utils.G.nodes[test_sample]['label']:
+                predict_correct += 1
+        self.tp_rate = predict_correct / np.float(len(self.test_nodes))
+
+    def evaluate_combine_raw_nc(self,utils):
+        predict_correct = 0.0
+        for test_sample in self.test_nodes:
+            x_n2v = self.get_test_embed_n2v(test_sample, utils)
+            x = self.get_test_embed_raw(test_sample,utils)
+            logit = utils.sess.run([utils.logit_softmax_reduce], feed_dict={utils.x_center:x,utils.x_n2v:x_n2v})
+            predict = np.where(logit[0] == logit[0].max())[0][0]
+            if predict == utils.G.nodes[test_sample]['label']:
+                predict_correct += 1
+        self.tp_rate = predict_correct / np.float(len(self.test_nodes))
 
 def cal_auc(score_pos,score_neg,roc_resolution,test_number_pos,test_number_neg):
     threshold = -1

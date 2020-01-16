@@ -237,7 +237,11 @@ class utils(model_optimization):
         mini_batch_mean_agg = np.zeros((self.batch_size,self.attribute_size))
         index = 0
         for node_index in index_vector:
-            single_gcn = self.
+            single_mean_pool = self.mean_pooling_neighbor(node_index)
+            mini_batch_mean_agg[index, :] = single_mean_pool
+            index += 1
+
+        return mini_batch_mean_agg
 
     """
     get batch n2v
@@ -298,6 +302,20 @@ class utils(model_optimization):
                 index += 1
         return mini_batch_negative
 
+    """
+    get batch negative sampling for meanpooling
+    """
+    def get_batch_negative_meanpool(self,negative_samples):
+        mini_batch_negative = np.zeros((self.batch_size, self.negative_sample_size, self.attribute_size))
+        for i in range(self.batch_size):
+            index = 0
+            for node in negative_samples[i, :]:
+                negative_sample = self.mean_pooling_neighbor(node)
+                mini_batch_negative[i, index, :] = negative_sample
+                index += 1
+        return mini_batch_negative
+
+
 
     """
     get batch skip_gram samples for attribute
@@ -337,6 +355,18 @@ class utils(model_optimization):
             for node in skip_gram_vecs[i,:]:
                 skip_gram_sample = self.assign_value(node)
                 mini_batch_skip_gram[i,index,:] = skip_gram_sample
+                index += 1
+        return mini_batch_skip_gram
+    """
+    get batch for mean pooling skip_gram
+    """
+    def get_batch_skip_gram_meanpool(self,skip_gram_vecs):
+        mini_batch_skip_gram = np.zeros((self.batch_size, self.walk_length, self.attribute_size))
+        for i in range(self.batch_size):
+            index = 0
+            for node in skip_gram_vecs[i, :]:
+                skip_gram_sample = self.mean_pooling_neighbor(node)
+                mini_batch_skip_gram[i, index, :] = skip_gram_sample
                 index += 1
         return mini_batch_skip_gram
 
@@ -444,6 +474,7 @@ class utils(model_optimization):
         mini_batch_integral = np.zeros((self.batch_size, 1 + self.walk_length + self.negative_sample_size, self.attribute_size))
         mini_batch_integral_n2v = np.zeros((self.batch_size, 1 + self.walk_length + self.negative_sample_size, self.data_length))
         mini_batch_integral_centers = np.zeros((self.batch_size, 1+self.walk_length+self.negative_sample_size,self.attribute_size))
+        mini_batch_integral_mean_agg = np.zeros((self.batch_size, 1+self.walk_length+self.negative_sample_size,self.attribute_size))
         mini_batch_raw, start_nodes = self.get_batch_BFS(start_index_)
         mini_batch_y = np.zeros((self.batch_size, self.data_length))
         mini_batch_x_label = np.zeros((self.batch_size, self.data_length))
@@ -451,6 +482,7 @@ class utils(model_optimization):
         #mini_batch_y_mean_pool = np.zeros(3)
 
         batch_center_x = self.get_minibatch(start_nodes)
+        batch_mean_agg = self.get_batch_mean_pooling_neighbor(start_nodes)
         batch_GCN_agg = self.get_batch_GCNagg(start_nodes)
         batch_n2v = self.get_batch_n2v(start_nodes)
         negative_samples = np.zeros((self.batch_size, self.negative_sample_size))
@@ -461,6 +493,7 @@ class utils(model_optimization):
             #indexy = self.G.node[start_nodes[i]]['node_index']
             mini_batch_integral_n2v[i, 0, :] = batch_n2v[i,:]
             mini_batch_integral_centers[i,0,:] = batch_center_x[i,:]
+            mini_batch_integral_mean_agg[i,0,:] = batch_mean_agg[i,:]
 
         mini_batch_y_mean_pool, mini_batch_skip_gram = self.get_batch_mean_pooling(start_nodes)
     
@@ -470,19 +503,23 @@ class utils(model_optimization):
         negative_samples_vectors = self.get_batch_negative(negative_samples)
         negative_samples_vectors_n2v = self.get_batch_negative_n2v(negative_samples)
         negative_samples_vectors_center = self.get_batch_negative_center(negative_samples)
+        negative_samples_vectors_meanpool = self.get_batch_negative_meanpool(negative_samples)
     
         skip_gram_vectors = self.get_batch_skip_gram(mini_batch_raw)
         skip_gram_vectors_n2v = self.get_batch_skip_gram_n2v(mini_batch_raw)
         skip_gram_vectors_center =self.get_batch_skip_gram_center(mini_batch_raw)
+        skip_gram_vectors_meanpool = self.get_batch_skip_gram_meanpool(mini_batch_raw)
         for i in range(self.batch_size):
             mini_batch_integral[i, 1:self.walk_length + 1, :] = skip_gram_vectors[i, :, :]
             mini_batch_integral_n2v[i, 1:self.walk_length + 1, :] = skip_gram_vectors_n2v[i, :, :]
             mini_batch_integral_centers[i,1:self.walk_length+1,:] = skip_gram_vectors_center[i,:,:]
+            mini_batch_integral_mean_agg[i, 1:self.walk_length + 1, :] = skip_gram_vectors_meanpool[i, :, :]
     
         for i in range(self.batch_size):
             mini_batch_integral[i, self.walk_length + 1:, :] = negative_samples_vectors[i, :, :]
             mini_batch_integral_n2v[i,self.walk_length + 1:, :] = negative_samples_vectors_n2v[i, :, :]
             mini_batch_integral_centers[i,self.walk_length+1:,:] = negative_samples_vectors_center[i,:,:]
+            mini_batch_integral_mean_agg[i, self.walk_length + 1:, :] = negative_samples_vectors_meanpool[i, :, :]
     
         """
         for i in range(batch_size):
@@ -508,7 +545,7 @@ class utils(model_optimization):
             mini_batch_y_label[i][indexy] = 1
 
         return mini_batch_integral, mini_batch_y, mini_batch_x_label, mini_batch_y_mean_pool, batch_center_x, \
-               mini_batch_integral_n2v, mini_batch_integral_centers, mini_batch_y_label
+               mini_batch_integral_n2v, mini_batch_integral_centers, mini_batch_integral_mean_agg,mini_batch_y_label
 
     def train(self):
         if self.option_lp_nc == 1:
@@ -528,51 +565,75 @@ class utils(model_optimization):
                 start_time = time.time()
                 sample_index = j*self.batch_size #np.int(np.floor(np.random.uniform(0, )))
                 mini_batch_integral, mini_batch_y, mini_batch_x_label, mini_batch_y_mean_pool, mini_batch_x, \
-                mini_batch_integral_n2v, mini_batch_integral_centers, mini_batch_y_label = \
+                mini_batch_integral_n2v, mini_batch_integral_centers, mini_batch_integral_mean_agg,mini_batch_y_label = \
                     self.get_data_one_batch(sample_index)
                 if self.option == 1:
                     print("running mf_gcn")
                     err_ = self.sess.run([self.negative_sum, self.train_step_auto], feed_dict=
                                                                              {self.x_gcn: mini_batch_integral,
-                                                                              self.y_mean_pooling: mini_batch_y_mean_pool,
-                                                                              self.x_center: mini_batch_integral_centers,
                                                                               self.y_label:mini_batch_y_label})
                     print(err_[0])
-                    err_sup = self.sess.run([self.cross_entropy, self.train_step_cross_entropy], feed_dict=
-                                                                            {self.x_n2v: mini_batch_integral_n2v,
-                                                                             self.x_gcn: mini_batch_integral,
-                                                                             self.x_center:mini_batch_integral_centers,
-                                                                             self.y_label: mini_batch_y_label
-                                                                             })
-                    print(err_sup[0])
+                    if self.option_lp_nc == 2:
+                        err_sup = self.sess.run([self.cross_entropy, self.train_step_cross_entropy], feed_dict=
+                                                                                {self.x_gcn: mini_batch_integral,
+                                                                                 self.y_label: mini_batch_y_label
+                                                                                 })
+                        print(err_sup[0])
                 if self.option == 2:
                     print("running n2v")
                     err_ = self.sess.run([self.negative_sum, self.train_step_neg], feed_dict=
                                                                             {self.x_n2v: mini_batch_integral_n2v,
-                                                                             self.y_mean_pooling: mini_batch_y_mean_pool,
-                                                                             self.x_center: mini_batch_integral_centers,
                                                                              self.y_label: mini_batch_y_label})
                     print(err_[0])
-                    err_sup = self.sess.run([self.cross_entropy, self.train_step_cross_entropy], feed_dict=
-                                                                            {self.x_n2v: mini_batch_integral_n2v,
-                                                                             self.y_mean_pooling: mini_batch_y_mean_pool,
-                                                                             self.x_center: mini_batch_integral_centers,
-                                                                             self.y_label: mini_batch_y_label})
-                    print(err_sup[0])
+                    if self.option_lp_nc == 2:
+                        err_sup = self.sess.run([self.cross_entropy, self.train_step_cross_entropy], feed_dict=
+                                                                                {self.x_n2v: mini_batch_integral_n2v,
+                                                                                 self.y_label: mini_batch_y_label})
+                        print(err_sup[0])
                 if self.option == 3:
                     print("running structure+feature")
                     err_ = self.sess.run([self.negative_sum, self.train_step_neg], feed_dict=
                                                                             {self.x_n2v: mini_batch_integral_n2v,
                                                                              self.x_gcn: mini_batch_integral,
-                                                                             self.x_center:mini_batch_integral_centers,
                                                                              self.y_label:mini_batch_y_label})
                     print(err_[0])
-                    err_sup = self.sess.run([self.cross_entropy, self.train_step_cross_entropy], feed_dict=
+                    if self.option_lp_nc == 2:
+                        err_sup = self.sess.run([self.cross_entropy, self.train_step_cross_entropy], feed_dict=
+                                                                                {self.x_n2v: mini_batch_integral_n2v,
+                                                                                 self.x_gcn: mini_batch_integral,
+                                                                                 self.x_center: mini_batch_integral_centers,
+                                                                                 self.y_label: mini_batch_y_label
+                                                                                 })
+                        print(err_sup[0])
+
+                if self.option == 4:
+                    print("running structure+raw_feature")
+                    err_ = self.sess.run([self.negative_sum, self.train_step_neg], feed_dict=
                                                                             {self.x_n2v: mini_batch_integral_n2v,
-                                                                             self.x_gcn: mini_batch_integral,
                                                                              self.x_center: mini_batch_integral_centers,
-                                                                             self.y_label: mini_batch_y_label
-                                                                             })
-                    print(err_sup[0])
+                                                                             self.y_label: mini_batch_y_label})
+                    print(err_[0])
+                    if self.option_lp_nc == 2:
+                        err_sup = self.sess.run([self.cross_entropy, self.train_step_cross_entropy], feed_dict=
+                                                                                {self.x_n2v: mini_batch_integral_n2v,
+                                                                                 self.x_center: mini_batch_integral_centers,
+                                                                                 self.y_label: mini_batch_y_label
+                                                                                 })
+                        print(err_sup[0])
+
+                if self.option == 5:
+                    print("running structure+graphsage_mean_pool")
+                    err_ = self.sess.run([self.negative_sum, self.train_step_neg], feed_dict=
+                                                                            {self.x_n2v: mini_batch_integral_n2v,
+                                                                             self.x_mean_pool:mini_batch_integral_mean_agg,
+                                                                             self.y_label: mini_batch_y_label})
+                    print(err_[0])
+                    if self.option_lp_nc == 2:
+                        err_sup = self.sess.run([self.cross_entropy, self.train_step_cross_entropy], feed_dict=
+                                                                                {self.x_n2v: mini_batch_integral_n2v,
+                                                                                 self.x_mean_pool:mini_batch_integral_mean_agg,
+                                                                                 self.y_label: mini_batch_y_label
+                                                                                 })
+                        print(err_sup[0])
                 print("one iteration uses %s seconds" % (time.time() - start_time))
             k = k + 1

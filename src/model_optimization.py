@@ -130,11 +130,33 @@ class model_optimization(Data_process):
         """
         self.h1 = tf.concat(self.Dense_gcn_layers,2)
 
-        self.Dense_layer_fc_gcn = tf.layers.dense(inputs=self.h1,
+        self.Dense_layer_fc_gcn_ = tf.layers.dense(inputs=self.h1,
+                                                  units=500,
+                                                  kernel_initializer=tf.keras.initializers.he_normal(seed=None),
+                                                  activation=tf.nn.elu)
+
+        self.Dense_layer_fc_gcn = tf.layers.dense(inputs=self.Dense_layer_fc_gcn_,
                                                   units=self.latent_dim,
                                                   kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                                   activation=tf.nn.elu)
-                                                  #name='embedding_gcn')
+        """
+        self.Dense_gcn_layers2 = []
+
+        for i in range(self.filter_num):
+            Dense_gcn2 = tf.layers.dense(inputs=self.Dense_layer_fc_gcn_,
+                                          units=self.latent_dim_gcn,
+                                          kernel_initializer=tf.keras.initializers.he_normal(seed=None),
+                                          activation=tf.nn.relu)
+            self.Dense_gcn_layers2.append(Dense_gcn2)
+
+        self.h2 = tf.concat(self.Dense_gcn_layers2,2)
+
+        self.Dense_layer_fc_gcn = tf.layers.dense(inputs=self.h2,
+                                                  units=self.latent_dim,
+                                                  kernel_initializer=tf.keras.initializers.he_normal(seed=None),
+                                                  activation=tf.nn.elu)
+        """
+
 
     def build_second_layer(self):
         self.Dense_gcn_layers2 = []
@@ -158,23 +180,27 @@ class model_optimization(Data_process):
                                              #name='embedding_gcn')
 
     def build_raw_feature_layer(self):
-        Dense_raw = tf.layers.dense(input=self.x_center,
-                                    units = 500,
+        """
+        Dense_raw = tf.layers.dense(inputs=self.x_center,
+                                    units = 16,
                                     kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                     activation=tf.nn.relu)
+        """
 
-        self.Dense_raw_final = tf.layers.dense(inputs=Dense_raw,
+        self.Dense_raw_final = tf.layers.dense(inputs=self.x_center,
                                              units=self.latent_dim,
                                              kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                              activation=tf.nn.elu)
 
     def build_mean_pool_layer(self):
-        Dense_mean_pool = tf.layers.dense(input=self.x_mean_pool,
+        """
+        Dense_mean_pool = tf.layers.dense(inputs=self.x_mean_pool,
                                     units=500,
                                     kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                     activation=tf.nn.relu)
+        """
 
-        self.Dense_mean_pool_final = tf.layers.dense(inputs=Dense_mean_pool,
+        self.Dense_mean_pool_final = tf.layers.dense(inputs=self.x_mean_pool,
                                                units=self.latent_dim,
                                                kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                                activation=tf.nn.elu)
@@ -331,27 +357,75 @@ class model_optimization(Data_process):
             self.x_skip = tf.gather(self.Dense_combine, idx_skip, axis=1)
             self.x_negative = tf.gather(self.Dense_combine, idx_negative, axis=1)
 
-        if self.option = 4:
+        if self.option == 4:
             """
-            raw feature & mean pooling 
+            raw feature and structure
             """
-            retun 1
+            self.Dense_concat = tf.concat([self.Dense_raw_final, self.Dense4_n2v], axis=2)
+
+            self.Dense_combine = tf.layers.dense(inputs=self.Dense_concat,
+                                                 units=self.latent_dim,
+                                                 kernel_initializer=tf.keras.initializers.he_normal(seed=None),
+                                                 activation=tf.nn.elu,
+                                                 name='embedding_concat')
+
+            self.x_origin = tf.gather(self.Dense_combine, idx_origin, axis=1)
+            self.x_skip = tf.gather(self.Dense_combine, idx_skip, axis=1)
+            self.x_negative = tf.gather(self.Dense_combine, idx_negative, axis=1)
+
+        if self.option == 5:
+            """
+            graphsage with mean pool and structure
+            """
+            self.Dense_concat = tf.concat([self.Dense_mean_pool_final, self.Dense4_n2v], axis=2)
+
+            self.Dense_combine = tf.layers.dense(inputs=self.Dense_concat,
+                                                 units=self.latent_dim,
+                                                 kernel_initializer=tf.keras.initializers.he_normal(seed=None),
+                                                 activation=tf.nn.elu,
+                                                 name='embedding_concat')
+
+            self.x_origin = tf.gather(self.Dense_combine, idx_origin, axis=1)
+            self.x_skip = tf.gather(self.Dense_combine, idx_skip, axis=1)
+            self.x_negative = tf.gather(self.Dense_combine, idx_negative, axis=1)
 
     def config_model(self):
         if self.option == 1:
+            """
+            only mfgcn & graphsage gcn
+            """
             self.build_first_layer()
             #self.build_second_layer()
             #self.mse_loss()
 
         if self.option == 2:
+            """
+            node2vec
+            """
             self.n2v()
             #self.supervised_loss()
 
         if self.option == 3:
+            """
+            combine structure with mfgcn
+            """
             self.build_first_layer()
             #self.build_second_layer()
             self.n2v()
             #self.supervised_loss()
+        if self.option == 4:
+            """
+            raw feature with structure
+            """
+            self.build_raw_feature_layer()
+            self.n2v()
+
+        if self.option == 5:
+            """
+            graphsage with mean pool
+            """
+            self.build_mean_pool_layer()
+            self.n2v()
 
         self.pick_model()
         self.SGNN_loss()
