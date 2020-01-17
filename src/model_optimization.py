@@ -376,7 +376,7 @@ class model_optimization(Data_process):
             """
             combine structure with mfgcn
             """
-            self.build_first_layer()
+            self.build_mfgcn_layer()
             #self.build_second_layer()
             self.n2v()
             #self.supervised_loss()
