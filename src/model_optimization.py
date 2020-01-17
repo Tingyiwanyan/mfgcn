@@ -37,7 +37,7 @@ class model_optimization(Data_process):
             """
             self.attribute_size = 3703
             self.latent_dim = 100
-            self.latent_dim_gcn = 500
+            self.latent_dim_gcn = 16
             self.latent_dim_gcn2 = 50
             self.negative_sample_size = 100
             self.class_num = 6
@@ -50,7 +50,7 @@ class model_optimization(Data_process):
         self.Dense4_n2v = None
         self.combined_embed = None
         self.option = option
-        self.filter_num = 10
+        self.filter_num = 30
 
 
         """
@@ -85,7 +85,8 @@ class model_optimization(Data_process):
         """
         Input of max pooling
         """
-       # self.x_max_pool_neighbors = tf
+        self.x_max_pool_neighbors = tf.placeholder(tf.float32,
+                                                   [self.neighborhood_sample_num,self.attribute_size])
 
         """
         Input of target vector
@@ -169,6 +170,23 @@ class model_optimization(Data_process):
                                                activation=tf.nn.elu)
 
     def build_max_pool_layer(self):
+        """
+        build max pool layer
+        """
+        self.x_neighbor = []
+        for i in range(self.neighborhood_sample_num):
+            idx_neighbor = tf.constant([i])
+            one_neighbor = tf.gather(self.x_max_pool_neighbors, idx_neighbor, axis=0)
+            self.x_neighbor.append(one_neighbor)
+
+        self.max_pool_neighbors = []
+
+        for i in range(self.neighborhood_sample_num):
+            one_max_pool_layer = tf.layers.dense(inputs=self.x_mean_pool,
+                                               units=self.latent_dim,
+                                               kernel_initializer=tf.keras.initializers.he_normal(seed=None),
+                                               activation=tf.nn.elu)
+
 
 
     def n2v(self):
