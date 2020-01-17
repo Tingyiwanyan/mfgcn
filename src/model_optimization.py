@@ -19,6 +19,7 @@ class model_optimization(Data_process):
         #self.G = G
         self.batch_size = 64
         self.walk_length = 15
+        self.neighborhood_sample_num = 20
         if data_set == 1:
             """
             Aminer data
@@ -36,7 +37,7 @@ class model_optimization(Data_process):
             """
             self.attribute_size = 3703
             self.latent_dim = 100
-            self.latent_dim_gcn = 16
+            self.latent_dim_gcn = 500
             self.latent_dim_gcn2 = 50
             self.negative_sample_size = 100
             self.class_num = 6
@@ -49,7 +50,7 @@ class model_optimization(Data_process):
         self.Dense4_n2v = None
         self.combined_embed = None
         self.option = option
-        self.filter_num = 30
+        self.filter_num = 10
 
 
         """
@@ -80,6 +81,12 @@ class model_optimization(Data_process):
         """
         self.x_mean_pool = tf.placeholder(tf.float32,
                                        [None, 1 + self.walk_length + self.negative_sample_size, self.attribute_size])
+
+        """
+        Input of max pooling
+        """
+       # self.x_max_pool_neighbors = tf
+
         """
         Input of target vector
         """
@@ -114,7 +121,7 @@ class model_optimization(Data_process):
 
         #self.logits = None
 
-    def build_first_layer(self):
+    def build_mfgcn_layer(self):
         self.Dense_gcn_layers = []
         print("filter number is")
         print(self.filter_num)
@@ -129,55 +136,14 @@ class model_optimization(Data_process):
         Perform concatenation
         """
         self.h1 = tf.concat(self.Dense_gcn_layers,2)
+        """
+        use elu to avoid sparse data
+        """
 
-        self.Dense_layer_fc_gcn_ = tf.layers.dense(inputs=self.h1,
-                                                  units=500,
-                                                  kernel_initializer=tf.keras.initializers.he_normal(seed=None),
-                                                  activation=tf.nn.elu)
-
-        self.Dense_layer_fc_gcn = tf.layers.dense(inputs=self.Dense_layer_fc_gcn_,
+        self.Dense_layer_fc_gcn = tf.layers.dense(inputs=self.h1,
                                                   units=self.latent_dim,
                                                   kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                                   activation=tf.nn.elu)
-        """
-        self.Dense_gcn_layers2 = []
-
-        for i in range(self.filter_num):
-            Dense_gcn2 = tf.layers.dense(inputs=self.Dense_layer_fc_gcn_,
-                                          units=self.latent_dim_gcn,
-                                          kernel_initializer=tf.keras.initializers.he_normal(seed=None),
-                                          activation=tf.nn.relu)
-            self.Dense_gcn_layers2.append(Dense_gcn2)
-
-        self.h2 = tf.concat(self.Dense_gcn_layers2,2)
-
-        self.Dense_layer_fc_gcn = tf.layers.dense(inputs=self.h2,
-                                                  units=self.latent_dim,
-                                                  kernel_initializer=tf.keras.initializers.he_normal(seed=None),
-                                                  activation=tf.nn.elu)
-        """
-
-
-    def build_second_layer(self):
-        self.Dense_gcn_layers2 = []
-        for i in range(self.filter_num):
-            Dense_gcn2 = tf.layers.dense(inputs=self.h1,
-                                    units=self.latent_dim_gcn,
-                                    kernel_initializer=tf.keras.initializers.he_normal(seed=None),
-                                    activation=tf.nn.relu)
-            self.Dense_gcn_layers2.append(Dense_gcn2)
-        """
-        Perform concatenation
-        """
-        self.h2 = tf.concat(self.Dense_gcn_layers2,2)
-        """
-        We use elu to avoid too sparse data
-        """
-        self.Dense_layer_fc_gcn = tf.layers.dense(inputs=self.h2,
-                                             units=self.latent_dim,
-                                             kernel_initializer=tf.keras.initializers.he_normal(seed=None),
-                                             activation=tf.nn.elu)
-                                             #name='embedding_gcn')
 
     def build_raw_feature_layer(self):
         """
@@ -194,10 +160,7 @@ class model_optimization(Data_process):
 
     def build_mean_pool_layer(self):
         """
-        Dense_mean_pool = tf.layers.dense(inputs=self.x_mean_pool,
-                                    units=500,
-                                    kernel_initializer=tf.keras.initializers.he_normal(seed=None),
-                                    activation=tf.nn.relu)
+        build mean pooling layer
         """
 
         self.Dense_mean_pool_final = tf.layers.dense(inputs=self.x_mean_pool,
@@ -205,19 +168,23 @@ class model_optimization(Data_process):
                                                kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                                activation=tf.nn.elu)
 
+    def build_max_pool_layer(self):
+
 
     def n2v(self):
-
+        """
         Dense3_n2v = tf.layers.dense(inputs=self.x_n2v,
                                      units=1024,
                                      kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                      activation=tf.nn.relu)
+        """
 
         self.Dense4_n2v = tf.layers.dense(inputs=Dense3_n2v,
-                                     units=100,
+                                     units=self.latent_dim,
                                      kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                      activation=tf.nn.elu,
                                      name='embedding_n2v')
+
 
     def SGNN_loss(self):
         """
