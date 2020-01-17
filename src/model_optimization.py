@@ -361,7 +361,7 @@ class model_optimization(Data_process):
             """
             only mfgcn & graphsage gcn
             """
-            self.build_first_layer()
+            self.build_mfgcn_layer()
             #self.build_second_layer()
             #self.mse_loss()
 
