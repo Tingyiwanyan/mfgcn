@@ -179,7 +179,7 @@ class model_optimization(Data_process):
                                      activation=tf.nn.relu)
         """
 
-        self.Dense4_n2v = tf.layers.dense(inputs=Dense3_n2v,
+        self.Dense4_n2v = tf.layers.dense(inputs=self.x_n2v,
                                      units=self.latent_dim,
                                      kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                      activation=tf.nn.elu,
