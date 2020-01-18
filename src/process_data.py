@@ -24,7 +24,7 @@ class Data_process(Data_loading):
         self.train_cut_edge = None
         self.prop_pos = 0.5
         self.prop_neg = 0.5
-        self.prop_nc = 0.5
+        self.prop_nc = 0.1
         self.npos = np.int(self.prop_pos*self.n_edges)
         self.n_nc = np.int(self.prop_nc*self.n_nodes)
         self.nneg = None
@@ -62,7 +62,7 @@ class Data_process(Data_loading):
         self.train_nodes = [self.nodes[i] for i in rnd_index]
         self.test_nodes = [x for x in self.nodes if x not in self.train_nodes]
 
-
+    #def generate_inductive_train_graph(self):
 
     def config_train_test(self):
         if self.option_lp_nc == 1:

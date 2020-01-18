@@ -165,7 +165,9 @@ class evaluation(object):
         for test_sample in self.test_nodes:
             x_n2v = self.get_test_embed_n2v(test_sample,utils)
             x = self.get_test_embed_mfgcn(test_sample,utils)
-            logit = utils.sess.run([utils.logit_softmax_reduce],feed_dict={utils.x_n2v:x_n2v,utils.x_gcn:x})
+            x_center = self.get_test_embed_raw(test_sample,utils)
+            logit = utils.sess.run([utils.logit_softmax_reduce],feed_dict={utils.x_n2v:x_n2v,utils.x_gcn:x,
+                                                                           utils.x_center:x_center})
             predict = np.where(logit[0] == logit[0].max())[0][0]
             if predict == utils.G.nodes[test_sample]['label']:
                 predict_correct += 1
@@ -187,7 +189,9 @@ class evaluation(object):
         for test_sample in self.test_nodes:
             x_n2v = self.get_test_embed_n2v(test_sample, utils)
             x = self.get_test_embed_meanpool(test_sample,utils)
-            logit = utils.sess.run([utils.logit_softmax_reduce], feed_dict={utils.x_mean_pool:x,utils.x_n2v:x_n2v})
+            x_center = self.get_test_embed_raw(test_sample,utils)
+            logit = utils.sess.run([utils.logit_softmax_reduce], feed_dict={utils.x_mean_pool:x,utils.x_n2v:x_n2v,
+                                                                            utils.x_center:x_center})
             predict = np.where(logit[0] == logit[0].max())[0][0]
             if predict == utils.G.nodes[test_sample]['label']:
                 predict_correct += 1

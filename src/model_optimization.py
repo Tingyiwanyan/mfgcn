@@ -11,7 +11,7 @@ class model_optimization(Data_process):
     """
     define decoding optimization model, for the use of all embedding methods
     """
-    def __init__(self,data_set,option,option_lp_nc):
+    def __init__(self,data_set,option,option_lp_nc,option_structure):
         """
         Define parameters
         """
@@ -50,6 +50,7 @@ class model_optimization(Data_process):
         self.Dense4_n2v = None
         self.combined_embed = None
         self.option = option
+        self.option_structure = option_structure
         self.filter_num = 30
 
 
@@ -132,7 +133,7 @@ class model_optimization(Data_process):
                                     kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                     activation=tf.nn.relu)
             self.Dense_gcn_layers.append(Dense_gcn)
-        #self.Dense_gcn_layers.append(self.x_center)
+        self.Dense_gcn_layers.append(self.x_center)
         """
         Perform concatenation
         """
@@ -142,9 +143,9 @@ class model_optimization(Data_process):
         """
 
         self.Dense_layer_fc_gcn = tf.layers.dense(inputs=self.h1,
-                                                  units=self.latent_dim,
-                                                  kernel_initializer=tf.keras.initializers.he_normal(seed=None),
-                                                  activation=tf.nn.elu)
+                                  units=self.latent_dim,
+                                  kernel_initializer=tf.keras.initializers.he_normal(seed=None),
+                                  activation=tf.nn.elu)
 
     def build_raw_feature_layer(self):
         """
@@ -159,15 +160,6 @@ class model_optimization(Data_process):
                                              kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                              activation=tf.nn.elu)
 
-    def build_mean_pool_layer(self):
-        """
-        build mean pooling layer
-        """
-
-        self.Dense_mean_pool_final = tf.layers.dense(inputs=self.x_mean_pool,
-                                               units=self.latent_dim,
-                                               kernel_initializer=tf.keras.initializers.he_normal(seed=None),
-                                               activation=tf.nn.elu)
 
     def build_max_pool_layer(self):
         """
@@ -182,10 +174,14 @@ class model_optimization(Data_process):
         self.max_pool_neighbors = []
 
         for i in range(self.neighborhood_sample_num):
-            one_max_pool_layer = tf.layers.dense(inputs=self.x_mean_pool,
+            one_max_pool_layer = tf.layers.dense(inputs=self.x_neighbor[i],
                                                units=self.latent_dim,
                                                kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                                activation=tf.nn.elu)
+
+            self.max_pool_neighbors.append(one_max_pool_layer)
+        self.max_pool_neighbors_ = tf.stack(self.max_pool_neighbors)
+        self.max_pool_neighbors_final = tf.math.reduce_max(self)
 
 
 
@@ -337,10 +333,15 @@ class model_optimization(Data_process):
                                                  kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                                  activation=tf.nn.elu,
                                                  name='embedding_concat')
+            if self.option_structure == 1:
+                self.x_origin = tf.gather(self.Dense_layer_fc_gcn, idx_origin, axis=1)
+                self.x_skip = tf.gather(self.Dense_layer_fc_gcn, idx_skip, axis=1)
+                self.x_negative = tf.gather(self.Dense_layer_fc_gcn, idx_negative, axis=1)
 
-            self.x_origin = tf.gather(self.Dense_combine, idx_origin, axis=1)
-            self.x_skip = tf.gather(self.Dense_combine, idx_skip, axis=1)
-            self.x_negative = tf.gather(self.Dense_combine, idx_negative, axis=1)
+            if self.option_structure == 2:
+                self.x_origin = tf.gather(self.Dense_combine, idx_origin, axis=1)
+                self.x_skip = tf.gather(self.Dense_combine, idx_skip, axis=1)
+                self.x_negative = tf.gather(self.Dense_combine, idx_negative, axis=1)
 
         if self.option == 4:
             """
@@ -353,10 +354,15 @@ class model_optimization(Data_process):
                                                  kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                                  activation=tf.nn.elu,
                                                  name='embedding_concat')
+            if self.option_structure == 1:
+                self.x_origin = tf.gather(self.Dense_raw_final, idx_origin, axis=1)
+                self.x_skip = tf.gather(self.Dense_raw_final, idx_skip, axis=1)
+                self.x_negative = tf.gather(self.Dense_raw_final, idx_negative, axis=1)
 
-            self.x_origin = tf.gather(self.Dense_combine, idx_origin, axis=1)
-            self.x_skip = tf.gather(self.Dense_combine, idx_skip, axis=1)
-            self.x_negative = tf.gather(self.Dense_combine, idx_negative, axis=1)
+            if self.option_structure == 2:
+                self.x_origin = tf.gather(self.Dense_combine, idx_origin, axis=1)
+                self.x_skip = tf.gather(self.Dense_combine, idx_skip, axis=1)
+                self.x_negative = tf.gather(self.Dense_combine, idx_negative, axis=1)
 
         if self.option == 5:
             """
@@ -369,10 +375,21 @@ class model_optimization(Data_process):
                                                  kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                                  activation=tf.nn.elu,
                                                  name='embedding_concat')
+            if self.option_structure == 1:
+                self.x_origin = tf.gather(self.Dense_mean_pool_final, idx_origin, axis=1)
+                self.x_skip = tf.gather(self.Dense_mean_pool_final, idx_skip, axis=1)
+                self.x_negative = tf.gather(self.Dense_mean_pool_final, idx_negative, axis=1)
 
-            self.x_origin = tf.gather(self.Dense_combine, idx_origin, axis=1)
-            self.x_skip = tf.gather(self.Dense_combine, idx_skip, axis=1)
-            self.x_negative = tf.gather(self.Dense_combine, idx_negative, axis=1)
+            if self.option_structure == 2:
+                self.x_origin = tf.gather(self.Dense_combine, idx_origin, axis=1)
+                self.x_skip = tf.gather(self.Dense_combine, idx_skip, axis=1)
+                self.x_negative = tf.gather(self.Dense_combine, idx_negative, axis=1)
+
+        if self.option == 6:
+            """
+            graphsage with max pool and structure
+            """
+            print(3)
 
     def config_model(self):
         if self.option == 1:
@@ -411,6 +428,12 @@ class model_optimization(Data_process):
             """
             self.build_mean_pool_layer()
             self.n2v()
+
+        if self.option == 6:
+            """
+            graphsage with max pool
+            """
+            self.build_max_pool_layer()
 
         self.pick_model()
         self.SGNN_loss()

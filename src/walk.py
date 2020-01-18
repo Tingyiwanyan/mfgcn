@@ -34,6 +34,8 @@ class n2v_walk():
             else:
                 break
 
+        #walk = walk.pop(0)
+
         return walk
 
     def simulate_walks(self, num_walks, walk_length):
