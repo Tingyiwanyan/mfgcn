@@ -19,7 +19,7 @@ class model_optimization(Data_process):
         #self.G = G
         self.batch_size = 64
         self.walk_length = 15
-        self.neighborhood_sample_num = 20
+        self.neighborhood_sample_num = 5
         if data_set == 1:
             """
             Aminer data
@@ -86,8 +86,9 @@ class model_optimization(Data_process):
         """
         Input of max pooling
         """
-        self.x_max_pool_neighbors = tf.placeholder(tf.float32,
-                                                   [self.neighborhood_sample_num,self.attribute_size])
+        self.x_max_pool = tf.placeholder(tf.float32,
+                                        [None, 1 + self.walk_length + self.negative_sample_size,
+                                         self.neighborhood_sample_num,self.attribute_size])
 
         """
         Input of target vector
@@ -168,8 +169,10 @@ class model_optimization(Data_process):
         self.x_neighbor = []
         for i in range(self.neighborhood_sample_num):
             idx_neighbor = tf.constant([i])
-            one_neighbor = tf.gather(self.x_max_pool_neighbors, idx_neighbor, axis=0)
-            self.x_neighbor.append(one_neighbor)
+            one_neighbor = tf.squeeze(tf.gather(self.x_max_pool, idx_neighbor, axis=2),axis = 2)
+            one_neighbor_ = tf.concat[one_neighbor,self.x_center]
+
+            self.x_neighbor.append(one_neighbor_,2)
 
         self.max_pool_neighbors = []
 
@@ -181,7 +184,7 @@ class model_optimization(Data_process):
 
             self.max_pool_neighbors.append(one_max_pool_layer)
         self.max_pool_neighbors_ = tf.stack(self.max_pool_neighbors)
-        self.max_pool_neighbors_final = tf.math.reduce_max(self)
+        self.max_pool_neighbors_final = tf.math.reduce_max(self.max_pool_neighbors_,0)
 
 
 
@@ -389,7 +392,9 @@ class model_optimization(Data_process):
             """
             graphsage with max pool and structure
             """
-            print(3)
+            self.x_origin = tf.gather(self.max_pool_neighbors_final, idx_origin, axis=1)
+            self.x_skip = tf.gather(self.max_pool_neighbors_final, idx_skip, axis=1)
+            self.x_negative = tf.gather(self.max_pool_neighbors_final, idx_negative, axis=1)
 
     def config_model(self):
         if self.option == 1:

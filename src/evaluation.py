@@ -8,7 +8,14 @@ import matplotlib.pyplot as plt
 
 class evaluation(object):
     def __init__(self,utils,option_lp_nc):
-        self.G = utils.G
+        if option_lp_nc == 3:
+            """
+            change test nodes into whole graph
+            """
+            self.G = utils.G_test
+            utils.G = utils.G_test
+        else:
+            self.G = utils.G
         self.data_length = len(list(self.G.nodes()))
         self.attribute_size = utils.attribute_size
         self.pos_test_edges = None
@@ -26,6 +33,7 @@ class evaluation(object):
         if option_lp_nc == 1:
             self.pos_test_edges = utils.train_cut_edges
             self.test_number_pos = len(self.pos_test_edges)
+
 
     def get_test_embed_mfgcn(self,node,utils):
         mini_batch_integral = np.zeros(
@@ -59,6 +67,14 @@ class evaluation(object):
         # for i in range(self.batch_size):
         mini_batch_integral_meanpool[0, 0, :] = batch_meanpool[0, :]
         return mini_batch_integral_meanpool
+
+    def get_test_embed_maxpool(self,node,utils):
+        mini_batch_integral_maxpool = np.zeros(
+            (1, 1 + utils.walk_length + utils.negative_sample_size,utils.neighborhood_sample_num, utils.attribute_size))
+        batch_maxpool = utils.get_batch_max_pooling([node])
+        mini_batch_integral_maxpool[0,0,:,:] = batch_maxpool[0,:,:]
+
+        return mini_batch_integral_maxpool
 
 
 
@@ -207,6 +223,20 @@ class evaluation(object):
             if predict == utils.G.nodes[test_sample]['label']:
                 predict_correct += 1
         self.tp_rate = predict_correct / np.float(len(self.test_nodes))
+
+    def evaluate_max_pool(self,utils):
+        predict_correct = 0.0
+        for test_sample in self.test_nodes:
+            x_n2v = self.get_test_embed_n2v(test_sample, utils)
+            x = self.get_test_embed_raw(test_sample, utils)
+            x_maxpool = self.get_test_embed_maxpool(test_sample,utils)
+            logit = utils.sess.run([utils.logit_softmax_reduce], feed_dict={utils.x_center: x, utils.x_n2v: x_n2v,
+                                                                            utils.x_max_pool:x_maxpool})
+            predict = np.where(logit[0] == logit[0].max())[0][0]
+            if predict == utils.G.nodes[test_sample]['label']:
+                predict_correct += 1
+        self.tp_rate = predict_correct / np.float(len(self.test_nodes))
+
 
 def cal_auc(score_pos,score_neg,roc_resolution,test_number_pos,test_number_neg):
     threshold = -1

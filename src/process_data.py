@@ -24,9 +24,11 @@ class Data_process(Data_loading):
         self.train_cut_edge = None
         self.prop_pos = 0.5
         self.prop_neg = 0.5
-        self.prop_nc = 0.1
+        self.prop_nc = 0.3
+        self.prop_cut_node = 0.9
         self.npos = np.int(self.prop_pos*self.n_edges)
         self.n_nc = np.int(self.prop_nc*self.n_nodes)
+        self.n_cut_node = np.int(self.prop_cut_node*self.n_nodes)
         self.nneg = None
         self.neg_edge_test = None
         self.train_nodes = None
@@ -36,7 +38,10 @@ class Data_process(Data_loading):
         #self.non_edges_dic()
 
     def non_edges_dic(self):
-        self.non_edges = [e for e in nx.non_edges(self.G_total)]
+        if self.option_lp_nc == 3:
+            self.non_edges = [e for e in nx.non_edges(self.G)]
+        else:
+            self.non_edges = [e for e in nx.non_edges(self.G_total)]
         self.nneg = np.int(self.prop_neg*len(self.non_edges))
         rnd_inx_neg = self.rnd.choice(len(self.non_edges), self.nneg, replace=False)
         self.neg_edge_test = [self.non_edges[i] for i in rnd_inx_neg]
@@ -44,6 +49,9 @@ class Data_process(Data_loading):
             self.dic_non_edges.setdefault(self.non_edges[i][0],[]).append(self.non_edges[i][1])
 
     def generate_train_graph(self):
+        """
+        cut edge while keep the remaining network connected
+        """
         rnd_inx = self.rnd.choice(len(self.edges), self.npos, replace=False)
         self.train_cut_edges = [self.edges[i] for i in rnd_inx]
         for edge in self.train_cut_edges:
@@ -51,7 +59,7 @@ class Data_process(Data_loading):
                 self.G.remove_edge(edge[0],edge[1])
             if self.G.has_edge(edge[1],edge[0]):
                 self.G.remove_edge(edge[1],edge[0])
-            if len(list(self.G.neighbors(edge[0]))) == 0:
+            if len(list(self.G.neighbors(edge[0]))) == 0 or len(list(self.G.neighbors(edge[1]))) == 0:
                 self.G.add_edge(edge[0],edge[1])
                 self.G.add_edge(edge[1],edge[0])
                 self.train_cut_edges.remove((edge[0],edge[1]))
@@ -62,7 +70,16 @@ class Data_process(Data_loading):
         self.train_nodes = [self.nodes[i] for i in rnd_index]
         self.test_nodes = [x for x in self.nodes if x not in self.train_nodes]
 
-    #def generate_inductive_train_graph(self):
+    def generate_inductive_train_graph(self):
+        """
+        cut nodes
+        """
+        rnd_index = self.rnd.choice(len(self.nodes), self.n_cut_node, replace=False)
+        self.test_nodes = [self.nodes[i] for i in rnd_index]
+        self.train_nodes = [x for x in self.nodes if x not in self.test_nodes]
+        self.G = self.G_total.subgraph(self.train_nodes)
+        self.G_test = self.G_total.subgraph(self.test_nodes)
+
 
     def config_train_test(self):
         if self.option_lp_nc == 1:
@@ -77,6 +94,12 @@ class Data_process(Data_loading):
             """
             self.non_edges_dic()
             self.generate_train_node()
+        if self.option_lp_nc == 3:
+            """
+            generate train graph for inductive node classification
+            """
+            self.generate_inductive_train_graph()
+            self.non_edges_dic()
 
 
 

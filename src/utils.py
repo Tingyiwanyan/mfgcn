@@ -11,23 +11,21 @@ from walk import n2v_walk
 class utils(model_optimization):
     def __init__(self,data_set,option,option_lp_nc,option_walk,option_structure):
         model_optimization.__init__(self,data_set,option,option_lp_nc,option_structure)
-        self.n2v_walk = n2v_walk(self.G,1,0.5,self.walk_length)
-        if option_walk == 1:
-            """
-            BFS statergy
-            """
-            self.walk_ = self.BFS_search
-        if option_walk == 2:
-            """
-            n2v stratergy
-            """
-            self.walk_ = self.n2v_walk.node2vec_walk
-            self.init_walk_prob()
-        #self.mean_count = model.mean_count
-        #self.mean_top = model.mean_top
+        self.option_walk = option_walk
 
     def init_walk_prob(self):
-        self.n2v_walk.preprocess_transition_probs()
+        self.n2v_walk = n2v_walk(self.G, 1, 0.5, self.walk_length)
+        if self.option_walk == 1:
+            """
+            BFS strategy
+            """
+            self.walk_ = self.BFS_search
+        if self.option_walk == 2:
+            """
+            n2v strategy
+            """
+            self.walk_ = self.n2v_walk.node2vec_walk
+            self.n2v_walk.preprocess_transition_probs()
 
     def assign_value(self, node_index):
         if self.data_set == 1:
@@ -50,6 +48,7 @@ class utils(model_optimization):
 
     def assign_value_n2v(self, node):
         one_sample = np.zeros(self.length)
+        node = np.int(node)
         for j in self.G.neighbors(node):
             indexy = self.G.node[j]['node_index']
             one_sample[indexy] = 1
@@ -154,7 +153,7 @@ class utils(model_optimization):
                 visited = [start_node]
                 BFS_queue = [start_node]
 
-        walk_ = walk_.pop(0)
+        #walk_ = walk_.pop(0)
         return walk_
 
 
@@ -231,7 +230,7 @@ class utils(model_optimization):
                 """
                 walk_single = np.array(self.walk_(nodes[i + start_index]))
                 batch_start_nodes.append(nodes[i + start_index])
-            if self.option_lp_nc == 2:
+            if self.option_lp_nc == 2 or self.option_lp_nc == 3:
                 """
                 task for node classification
                 """
@@ -670,7 +669,7 @@ class utils(model_optimization):
         if self.option_lp_nc == 1:
             G_num = len(self.G.nodes())
 
-        if self.option_lp_nc == 2:
+        if self.option_lp_nc == 2 or self.option_lp_nc == 3:
             G_num = len(self.train_nodes)
         iter_num = np.int(np.floor(G_num/self.batch_size))
         k = 0
@@ -692,7 +691,7 @@ class utils(model_optimization):
                                                                              {self.x_gcn: mini_batch_integral,
                                                                               self.y_label:mini_batch_y_label})
                     print(err_[0])
-                    if self.option_lp_nc == 2:
+                    if self.option_lp_nc == 2 or self.option_lp_nc == 3:
                         err_sup = self.sess.run([self.cross_entropy, self.train_step_cross_entropy], feed_dict=
                                                                                 {self.x_gcn: mini_batch_integral,
                                                                                  self.y_label: mini_batch_y_label
@@ -704,7 +703,7 @@ class utils(model_optimization):
                                                                             {self.x_n2v: mini_batch_integral_n2v,
                                                                              self.y_label: mini_batch_y_label})
                     print(err_[0])
-                    if self.option_lp_nc == 2:
+                    if self.option_lp_nc == 2 or self.option_lp_nc == 3:
                         err_sup = self.sess.run([self.cross_entropy, self.train_step_cross_entropy], feed_dict=
                                                                                 {self.x_n2v: mini_batch_integral_n2v,
                                                                                  self.y_label: mini_batch_y_label})
@@ -717,7 +716,7 @@ class utils(model_optimization):
                                                                              self.x_center: mini_batch_integral_centers,
                                                                              self.y_label:mini_batch_y_label})
                     print(err_[0])
-                    if self.option_lp_nc == 2:
+                    if self.option_lp_nc == 2 or self.option_lp_nc == 3:
                         err_sup = self.sess.run([self.cross_entropy, self.train_step_cross_entropy], feed_dict=
                                                                                 {self.x_n2v: mini_batch_integral_n2v,
                                                                                  self.x_gcn: mini_batch_integral,
@@ -733,7 +732,7 @@ class utils(model_optimization):
                                                                              self.x_center: mini_batch_integral_centers,
                                                                              self.y_label: mini_batch_y_label})
                     print(err_[0])
-                    if self.option_lp_nc == 2:
+                    if self.option_lp_nc == 2 or self.option_lp_nc == 3:
                         err_sup = self.sess.run([self.cross_entropy, self.train_step_cross_entropy], feed_dict=
                                                                                 {self.x_n2v: mini_batch_integral_n2v,
                                                                                  self.x_center: mini_batch_integral_centers,
@@ -745,15 +744,35 @@ class utils(model_optimization):
                     print("running structure+graphsage_mean_pool")
                     err_ = self.sess.run([self.negative_sum, self.train_step_neg], feed_dict=
                                                                             {self.x_n2v: mini_batch_integral_n2v,
+                                                                             self.x_center: mini_batch_integral_centers,
                                                                              self.x_mean_pool:mini_batch_integral_mean_agg,
                                                                              self.y_label: mini_batch_y_label})
                     print(err_[0])
-                    if self.option_lp_nc == 2:
+                    if self.option_lp_nc == 2 or self.option_lp_nc == 3:
                         err_sup = self.sess.run([self.cross_entropy, self.train_step_cross_entropy], feed_dict=
                                                                                 {self.x_n2v: mini_batch_integral_n2v,
+                                                                                 self.x_center: mini_batch_integral_centers,
                                                                                  self.x_mean_pool:mini_batch_integral_mean_agg,
                                                                                  self.y_label: mini_batch_y_label
                                                                                  })
                         print(err_sup[0])
+
+                if self.option == 6:
+                    print("running graphsage maxpool")
+                    err_ = self.sess.run([self.negative_sum, self.train_step_neg], feed_dict=
+                                                                            {self.x_n2v: mini_batch_integral_n2v,
+                                                                             self.x_center: mini_batch_integral_centers,
+                                                                             self.x_max_pool: mini_batch_integral_maxpool,
+                                                                             self.y_label: mini_batch_y_label})
+                    print(err_[0])
+                    if self.option_lp_nc == 2 or self.option_lp_nc == 3:
+                        err_sup = self.sess.run([self.cross_entropy, self.train_step_cross_entropy], feed_dict=
+                                                                                {self.x_n2v: mini_batch_integral_n2v,
+                                                                                 self.x_center: mini_batch_integral_centers,
+                                                                                 self.x_max_pool:mini_batch_integral_maxpool,
+                                                                                 self.y_label: mini_batch_y_label
+                                                                                 })
+                        print(err_sup[0])
+
                 print("one iteration uses %s seconds" % (time.time() - start_time))
             k = k + 1
