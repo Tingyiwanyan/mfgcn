@@ -36,8 +36,8 @@ class model_optimization(Data_process):
             citeceer data set 
             """
             self.attribute_size = 3703
-            self.latent_dim = 100
-            self.latent_dim_gcn = 16
+            self.latent_dim = 32
+            self.latent_dim_gcn = 100
             self.latent_dim_gcn2 = 50
             self.negative_sample_size = 100
             self.class_num = 6
@@ -51,7 +51,7 @@ class model_optimization(Data_process):
         self.combined_embed = None
         self.option = option
         self.option_structure = option_structure
-        self.filter_num = 30
+        self.filter_num = 1
 
 
         """
@@ -161,6 +161,17 @@ class model_optimization(Data_process):
                                              kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                              activation=tf.nn.elu)
 
+    def build_mean_pool_layer(self):
+        """
+        build mean pooling layer
+        """
+       # self.mean_agg = tf.concat([self.x_mean_pool,self.x_center],2)
+
+        self.Dense_mean_pool_final = tf.layers.dense(inputs=self.x_mean_pool,
+                                                     units=self.latent_dim,
+                                                     kernel_initializer=tf.keras.initializers.he_normal(seed=None),
+                                                     activation=tf.nn.elu)
+
 
     def build_max_pool_layer(self):
         """
@@ -170,21 +181,27 @@ class model_optimization(Data_process):
         for i in range(self.neighborhood_sample_num):
             idx_neighbor = tf.constant([i])
             one_neighbor = tf.squeeze(tf.gather(self.x_max_pool, idx_neighbor, axis=2),axis = 2)
-            one_neighbor_ = tf.concat[one_neighbor,self.x_center]
+            #one_neighbor_ = tf.concat([one_neighbor,self.x_center],2)
 
-            self.x_neighbor.append(one_neighbor_,2)
+            self.x_neighbor.append(one_neighbor)
 
         self.max_pool_neighbors = []
 
         for i in range(self.neighborhood_sample_num):
             one_max_pool_layer = tf.layers.dense(inputs=self.x_neighbor[i],
-                                               units=self.latent_dim,
+                                               units=self.latent_dim_gcn,
                                                kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                                activation=tf.nn.elu)
 
             self.max_pool_neighbors.append(one_max_pool_layer)
         self.max_pool_neighbors_ = tf.stack(self.max_pool_neighbors)
         self.max_pool_neighbors_final = tf.math.reduce_max(self.max_pool_neighbors_,0)
+        self.max_pool_agg = tf.concat([self.max_pool_neighbors_final,self.x_center],2)
+
+        self.Dense_layer_maxpool = tf.layers.dense(inputs=self.max_pool_agg,
+                                               units=self.latent_dim,
+                                               kernel_initializer=tf.keras.initializers.he_normal(seed=None),
+                                               activation=tf.nn.elu)
 
 
 
@@ -392,9 +409,9 @@ class model_optimization(Data_process):
             """
             graphsage with max pool and structure
             """
-            self.x_origin = tf.gather(self.max_pool_neighbors_final, idx_origin, axis=1)
-            self.x_skip = tf.gather(self.max_pool_neighbors_final, idx_skip, axis=1)
-            self.x_negative = tf.gather(self.max_pool_neighbors_final, idx_negative, axis=1)
+            self.x_origin = tf.gather(self.Dense_layer_maxpool, idx_origin, axis=1)
+            self.x_skip = tf.gather(self.Dense_layer_maxpool, idx_skip, axis=1)
+            self.x_negative = tf.gather(self.Dense_layer_maxpool, idx_negative, axis=1)
 
     def config_model(self):
         if self.option == 1:

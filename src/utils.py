@@ -127,7 +127,7 @@ class utils(model_optimization):
                 visited = [start_node]
                 BFS_queue = [start_node]
 
-        walk_ = walk_.pop(0)
+        #walk_ = walk_.pop(0)
         return walk_
 
     """
