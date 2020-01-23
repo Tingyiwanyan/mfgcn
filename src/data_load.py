@@ -12,10 +12,8 @@ class Data_loading(object):
         self.data_set = data_set
         if data_set == 1:
             self.init_aminer()
-        if data_set == 2:
+        if data_set == 2 or data_set == 3 or data_set == 4:
             self.init_citceer()
-        if data_set == 3:
-            self.init_cora()
 
     def init_aminer(self):
         file = open("/home/tingyi/data/full_team_members_year_c_0rmd.txt")
@@ -332,9 +330,19 @@ class Data_loading(object):
         self.std_sci = np.std([self.G.node[k]['scientific_age_diversity'] for k in self.G.nodes()])
 
     def init_citceer(self):
-        file = open("/home/tingyi/database/citeseer/edges.txt")
-        file2 = open("/home/tingyi/database/citeseer/features.txt")
-        file3 = open("/home/tingyi/database/citeseer/group.txt")
+        if self.data_set == 2:
+            file = open("/home/tingyi/database/citeseer/edges.txt")
+            file2 = open("/home/tingyi/database/citeseer/features.txt")
+            file3 = open("/home/tingyi/database/citeseer/group.txt")
+        if self.data_set == 3:
+            file = open("/home/tingyi/database/cora/edges.txt")
+            file2 = open("/home/tingyi/database/cora/features.txt")
+            file3 = open("/home/tingyi/database/cora/group.txt")
+        if self.data_set == 4:
+            file = open("/home/tingyi/database/wiki/edges.txt")
+            file2 = open("/home/tingyi/database/wiki/features.txt")
+            file3 = open("/home/tingyi/database/wiki/group.txt")
+
 
         self.G = nx.DiGraph()
         #index = 0

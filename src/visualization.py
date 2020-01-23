@@ -22,9 +22,13 @@ class visualization(object):
         i = 0
         for node in self.test_nodes:
             x_n2v= self.evl.get_test_embed_n2v(node,self.utils)
-            x,x_center = self.evl.get_test_embed_mfgcn(node,self.utils)
-            embed = self.utils.sess.run([self.utils.x_origin],feed_dict={self.utils.x_n2v:x_n2v,self.utils.x_gcn:x, \
-                                                                         self.utils.x_center:x_center})[0][0, 0, :]
+            x_gcn = self.evl.get_test_embed_mfgcn(node, self.utils)
+            x_center = self.evl.get_test_embed_raw(node, self.utils)
+            x_mean = self.evl.get_test_embed_meanpool(node, self.utils)
+            x_maxpool = self.evl.get_test_embed_maxpool(node, self.utils)
+            embed = self.utils.sess.run([self.utils.x_origin], feed_dict={self.utils.x_n2v: x_n2v, self.utils.x_gcn: x_gcn,
+                                                                self.utils.x_center: x_center,self.utils.x_mean_pool:x_mean,
+                                                                self.utils.x_max_pool:x_maxpool})[0][0,0,:]
             self.embedding_whole[i,:] = embed
             self.label_whole[i] = self.utils.G.nodes[node]['label']
             i = i + 1
@@ -48,6 +52,6 @@ class visualization(object):
                 color_ = 'orange'
             if self.label_whole[i] == 7:
                 color_ = 'pink'
-            plt.plot(self.embedding_2d[i][0], self.embedding_2d[i][1], '.', color=color_, markersize=1)
+            plt.plot(self.embedding_2d[i][0], self.embedding_2d[i][1], '.', color=color_, markersize=3)
 
         plt.show()

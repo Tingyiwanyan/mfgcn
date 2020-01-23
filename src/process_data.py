@@ -22,7 +22,7 @@ class Data_process(Data_loading):
         #self.train_inductive_G = self.G.copy()
         self.rnd = np.random.RandomState(seed=None)
         self.train_cut_edge = None
-        self.prop_pos = 0.5
+        self.prop_pos = 0.62
         self.prop_neg = 0.5
         self.prop_nc = 0.3
         self.prop_cut_node = 0.9
@@ -93,6 +93,7 @@ class Data_process(Data_loading):
             generate train nodes for transductive node classification
             """
             self.non_edges_dic()
+            #self.generate_train_graph()
             self.generate_train_node()
         if self.option_lp_nc == 3:
             """

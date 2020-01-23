@@ -38,7 +38,7 @@ class utils(model_optimization):
             attribute_vector[2] = (np.float(self.G.node[node_index]['productivity_diversity']) - self.mean_prod) / self.std_prod
             attribute_vector[3] = (np.float(self.G.node[node_index]['impact_diversity']) - self.mean_impact) / self.std_impact
             attribute_vector[4] = (np.float(self.G.node[node_index]['scientific_age_diversity']) - self.mean_sci) / self.std_sci
-        if self.data_set == 2:
+        if self.data_set == 2 or self.data_set == 3 or self.data_set == 4:
             """
             Citeceer dataset
             """
@@ -687,7 +687,7 @@ class utils(model_optimization):
                     self.get_data_one_batch(sample_index)
                 if self.option == 1:
                     print("running mf_gcn")
-                    err_ = self.sess.run([self.negative_sum, self.train_step_auto], feed_dict=
+                    err_ = self.sess.run([self.negative_sum, self.train_step_neg], feed_dict=
                                                                              {self.x_gcn: mini_batch_integral,
                                                                               self.y_label:mini_batch_y_label})
                     print(err_[0])

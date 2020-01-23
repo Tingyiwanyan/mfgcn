@@ -31,16 +31,24 @@ class model_optimization(Data_process):
             self.latent_dim_gcn2 = 100
             self.latent_dim_a = 100
             self.negative_sample_size = 100
-        if data_set == 2:
+        if data_set == 2 or data_set == 3 or data_set ==4:
             """
             citeceer data set 
             """
-            self.attribute_size = 3703
-            self.latent_dim = 32
-            self.latent_dim_gcn = 100
+            if data_set == 2:
+                self.attribute_size = 3703
+                self.class_num = 6
+            if data_set == 3:
+                self.attribute_size = 1433
+                self.class_num = 7
+            if data_set == 4:
+                self.attribute_size = 4973
+                self.class_num = 17
+            self.latent_dim = 100
+            self.latent_dim_gcn = 16
             self.latent_dim_gcn2 = 50
             self.negative_sample_size = 100
-            self.class_num = 6
+            #self.class_num = 6
             self.y_label = tf.placeholder(tf.float32, [None, self.class_num])
         self.data_length = len(list(self.G.nodes()))
         self.length = len(list(self.G.nodes()))
@@ -51,7 +59,7 @@ class model_optimization(Data_process):
         self.combined_embed = None
         self.option = option
         self.option_structure = option_structure
-        self.filter_num = 1
+        self.filter_num = 100
 
 
         """
@@ -165,9 +173,9 @@ class model_optimization(Data_process):
         """
         build mean pooling layer
         """
-       # self.mean_agg = tf.concat([self.x_mean_pool,self.x_center],2)
+        self.mean_agg = tf.concat([self.x_mean_pool,self.x_center],2)
 
-        self.Dense_mean_pool_final = tf.layers.dense(inputs=self.x_mean_pool,
+        self.Dense_mean_pool_final = tf.layers.dense(inputs=self.mean_agg,
                                                      units=self.latent_dim,
                                                      kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                                      activation=tf.nn.elu)

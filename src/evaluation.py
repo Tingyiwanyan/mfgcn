@@ -25,14 +25,15 @@ class evaluation(object):
         self.negative_sample_size = utils.negative_sample_size
         self.score_pos = None
         self.score_neg = None
-        self.test_number_neg = 7000
+        self.test_number_neg = 5000
         self.roc_resolution = 0.1
         self.test_number_pos = None
         self.train_nodes = utils.train_nodes
         self.test_nodes = utils.test_nodes
         if option_lp_nc == 1:
             self.pos_test_edges = utils.train_cut_edges
-            self.test_number_pos = len(self.pos_test_edges)
+            #self.test_number_pos = len(self.pos_test_edges)
+            self.test_number_pos = 3000
 
 
     def get_test_embed_mfgcn(self,node,utils):
@@ -87,12 +88,15 @@ class evaluation(object):
                 break
             x_gcn1 = self.get_test_embed_mfgcn(test_sample[0],utils)
             x_gcn2 = self.get_test_embed_mfgcn(test_sample[1],utils)
-            embed1 = utils.sess.run([utils.Dense_layer_fc_gcn], feed_dict={utils.x_gcn: x_gcn1})[0][0,0,:]
-            embed2 = utils.sess.run([utils.Dense_layer_fc_gcn], feed_dict={utils.x_gcn: x_gcn2})[0][0,0,:]
+            x_center1 = self.get_test_embed_raw(test_sample[0],utils)
+            x_center2 = self.get_test_embed_raw(test_sample[1],utils)
+            embed1 = utils.sess.run([utils.Dense_layer_fc_gcn], feed_dict={utils.x_gcn: x_gcn1,utils.x_center:x_center1})[0][0,0,:]
+            embed2 = utils.sess.run([utils.Dense_layer_fc_gcn], feed_dict={utils.x_gcn: x_gcn2,utils.x_center:x_center2})[0][0,0,:]
             embed1_norm = embed1/np.linalg.norm(embed1)
             embed2_norm = embed2/np.linalg.norm(embed2)
             self.score_pos[i] = np.sum(np.multiply(embed1_norm,embed2_norm))
             i = i+1
+            #print(i)
 
         i = 0
         #self.score_neg = np.zeros(len(self.neg_test_edges))
@@ -102,12 +106,15 @@ class evaluation(object):
                 break
             x_gcn1 = self.get_test_embed_mfgcn(test_sample[0],utils)
             x_gcn2 = self.get_test_embed_mfgcn(test_sample[1],utils)
-            embed1 = utils.sess.run([utils.Dense_layer_fc_gcn], feed_dict={utils.x_gcn: x_gcn1})[0][0,0,:]
-            embed2 = utils.sess.run([utils.Dense_layer_fc_gcn], feed_dict={utils.x_gcn: x_gcn2})[0][0,0,:]
+            x_center1 = self.get_test_embed_raw(test_sample[0], utils)
+            x_center2 = self.get_test_embed_raw(test_sample[1], utils)
+            embed1 = utils.sess.run([utils.Dense_layer_fc_gcn], feed_dict={utils.x_gcn: x_gcn1,utils.x_center:x_center1})[0][0,0,:]
+            embed2 = utils.sess.run([utils.Dense_layer_fc_gcn], feed_dict={utils.x_gcn: x_gcn2,utils.x_center:x_center2})[0][0,0,:]
             embed1_norm = embed1 / np.linalg.norm(embed1)
             embed2_norm = embed2 / np.linalg.norm(embed2)
             self.score_neg[i] = np.sum(np.multiply(embed1_norm,embed2_norm))
             i = i+1
+            #print(i)
 
     def evaluate_n2v_lp(self,utils):
         self.score_pos = np.zeros(self.test_number_pos)
@@ -139,6 +146,124 @@ class evaluation(object):
             embed2_norm = embed2 / np.linalg.norm(embed2)
             self.score_neg[i] = np.sum(np.multiply(embed1_norm,embed2_norm))
             i = i+1
+
+    def evaluate_meanpool_lp(self,utils):
+        self.score_pos = np.zeros(self.test_number_pos)
+        # self.score_pos = np.zeros(self.test_number)
+        i = 0
+        for test_sample in self.pos_test_edges:
+            if i == self.test_number_pos - 1:
+                break
+            x_meanpool1 = self.get_test_embed_meanpool(test_sample[0], utils)
+            x_meanpool2 = self.get_test_embed_meanpool(test_sample[1], utils)
+            x_center1 = self.get_test_embed_raw(test_sample[0], utils)
+            x_center2 = self.get_test_embed_raw(test_sample[1], utils)
+            embed1 = \
+            utils.sess.run([utils.Dense_mean_pool_final], feed_dict={utils.x_mean_pool:x_meanpool1,utils.x_center:x_center1})[0][0,0,:]
+            embed2 = \
+            utils.sess.run([utils.Dense_mean_pool_final], feed_dict={utils.x_mean_pool:x_meanpool2,utils.x_center:x_center2})[0][0,0,:]
+            embed1_norm = embed1 / np.linalg.norm(embed1)
+            embed2_norm = embed2 / np.linalg.norm(embed2)
+            self.score_pos[i] = np.sum(np.multiply(embed1_norm, embed2_norm))
+            i = i + 1
+
+        i = 0
+        # self.score_neg = np.zeros(len(self.neg_test_edges))
+        self.score_neg = np.zeros(self.test_number_neg)
+        for test_sample in self.neg_test_edges:
+            if i == self.test_number_neg - 1:
+                break
+            x_meanpool1 = self.get_test_embed_meanpool(test_sample[0], utils)
+            x_meanpool2 = self.get_test_embed_meanpool(test_sample[1], utils)
+            x_center1 = self.get_test_embed_raw(test_sample[0], utils)
+            x_center2 = self.get_test_embed_raw(test_sample[1], utils)
+            embed1 = \
+                utils.sess.run([utils.Dense_mean_pool_final],
+                               feed_dict={utils.x_mean_pool: x_meanpool1, utils.x_center: x_center1})[0][0, 0, :]
+            embed2 = \
+                utils.sess.run([utils.Dense_mean_pool_final],
+                               feed_dict={utils.x_mean_pool: x_meanpool2, utils.x_center: x_center2})[0][0, 0, :]
+            embed1_norm = embed1 / np.linalg.norm(embed1)
+            embed2_norm = embed2 / np.linalg.norm(embed2)
+            self.score_neg[i] = np.sum(np.multiply(embed1_norm, embed2_norm))
+            i = i + 1
+
+    def evaluate_maxpool_lp(self,utils):
+        self.score_pos = np.zeros(self.test_number_pos)
+        # self.score_pos = np.zeros(self.test_number)
+        i = 0
+        for test_sample in self.pos_test_edges:
+            if i == self.test_number_pos - 1:
+                break
+            x_center1 = self.get_test_embed_raw(test_sample[0], utils)
+            x_center2 = self.get_test_embed_raw(test_sample[1], utils)
+            x_maxpool1 = self.get_test_embed_maxpool(test_sample[0], utils)
+            x_maxpool2 = self.get_test_embed_maxpool(test_sample[1], utils)
+            embed1 = utils.sess.run([utils.Dense_layer_maxpool], feed_dict={utils.x_center: x_center1,
+                                                                            utils.x_max_pool: x_maxpool1})
+            embed2 = utils.sess.run([utils.Dense_layer_maxpool], feed_dict={utils.x_center: x_center2,
+                                                                             utils.x_max_pool: x_maxpool2})
+            embed1_norm = embed1 / np.linalg.norm(embed1)
+            embed2_norm = embed2 / np.linalg.norm(embed2)
+            self.score_pos[i] = np.sum(np.multiply(embed1_norm, embed2_norm))
+            i = i + 1
+
+        i = 0
+        # self.score_neg = np.zeros(len(self.neg_test_edges))
+        self.score_neg = np.zeros(self.test_number_neg)
+        for test_sample in self.neg_test_edges:
+            if i == self.test_number_neg - 1:
+                break
+            x_center1 = self.get_test_embed_raw(test_sample[0], utils)
+            x_center2 = self.get_test_embed_raw(test_sample[1], utils)
+            x_maxpool1 = self.get_test_embed_maxpool(test_sample[0], utils)
+            x_maxpool2 = self.get_test_embed_maxpool(test_sample[1], utils)
+            embed1 = utils.sess.run([utils.Dense_layer_maxpool], feed_dict={utils.x_center: x_center1,
+                                                                            utils.x_max_pool: x_maxpool1})
+            embed2 = utils.sess.run([utils.Dense_layer_maxpool], feed_dict={utils.x_center: x_center2,
+                                                                            utils.x_max_pool: x_maxpool2})
+            embed1_norm = embed1 / np.linalg.norm(embed1)
+            embed2_norm = embed2 / np.linalg.norm(embed2)
+            self.score_neg[i] = np.sum(np.multiply(embed1_norm, embed2_norm))
+            i = i + 1
+
+    def evaluate_raw_lp(self,utils):
+        self.score_pos = np.zeros(self.test_number_pos)
+        # self.score_pos = np.zeros(self.test_number)
+        i = 0
+        for test_sample in self.pos_test_edges:
+            if i == self.test_number_pos - 1:
+                break
+            x_center1 = self.get_test_embed_raw(test_sample[0], utils)
+            x_center2 = self.get_test_embed_raw(test_sample[1], utils)
+            embed1 = \
+            utils.sess.run([utils.Dense_raw_final], feed_dict={utils.x_center:x_center1})[0][0,0,:]
+            embed2 = \
+            utils.sess.run([utils.Dense_raw_final], feed_dict={utils.x_center:x_center2})[0][0,0,:]
+            embed1_norm = embed1 / np.linalg.norm(embed1)
+            embed2_norm = embed2 / np.linalg.norm(embed2)
+            self.score_pos[i] = np.sum(np.multiply(embed1_norm, embed2_norm))
+            i = i + 1
+
+        i = 0
+        # self.score_neg = np.zeros(len(self.neg_test_edges))
+        self.score_neg = np.zeros(self.test_number_neg)
+        for test_sample in self.neg_test_edges:
+            if i == self.test_number_neg - 1:
+                break
+            x_center1 = self.get_test_embed_raw(test_sample[0], utils)
+            x_center2 = self.get_test_embed_raw(test_sample[1], utils)
+            embed1 = \
+                utils.sess.run([utils.Dense_raw_final],
+                               feed_dict={ utils.x_center: x_center1})[0][0, 0, :]
+            embed2 = \
+                utils.sess.run([utils.Dense_raw_final],
+                               feed_dict={utils.x_center: x_center2})[0][0, 0, :]
+            embed1_norm = embed1 / np.linalg.norm(embed1)
+            embed2_norm = embed2 / np.linalg.norm(embed2)
+            self.score_neg[i] = np.sum(np.multiply(embed1_norm, embed2_norm))
+            i = i + 1
+
 
     def evaluate_combined_lp(self,utils):
         self.score_pos = np.zeros(self.test_number_pos)
@@ -224,7 +349,7 @@ class evaluation(object):
                 predict_correct += 1
         self.tp_rate = predict_correct / np.float(len(self.test_nodes))
 
-    def evaluate_max_pool(self,utils):
+    def evaluate_max_pool_nc(self,utils):
         predict_correct = 0.0
         for test_sample in self.test_nodes:
             x_n2v = self.get_test_embed_n2v(test_sample, utils)
