@@ -18,6 +18,12 @@ class Kg_construct_ehr():
         self.charteve = file_path + '/CHARTEVENTS.csv'
         self.d_item = file_path + '/D_ITEMS.csv'
         self.noteevents = file_path + '/NOTEEVENTS.csv'
+        self.proc_icd = file_path + '/PROCEDURES_ICD.csv'
+        self.read_diagnosis()
+        self.read_charteve()
+        self.read_diagnosis_d()
+        self.read_prescription()
+        self.read_proc_icd()
 
     def read_diagnosis(self):
         self.diag = pd.read_csv(self.diagnosis)
@@ -37,6 +43,18 @@ class Kg_construct_ehr():
     def read_noteevent(self):
         self.note = pd.read_csv(self.noteevents,chunksize=10000)
 
+    def read_proc_icd(self):
+        self.proc_icd = pd.read_csv(self.proc_icd)
+
 
     def create_kg(self):
-        self.kg = nx.DiGraph()
+        self.g = nx.DiGraph()
+        self.g.add_node()
+
+
+if __name__ == "__main__":
+    kg = Kg_construct_ehr()
+    kg.read_charteve()
+    kg.read_diagnosis()
+    kg.read_proc_icd()
+
