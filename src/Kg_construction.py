@@ -23,7 +23,8 @@ class Kg_construct_ehr():
         self.read_charteve()
         self.read_diagnosis_d()
         self.read_prescription()
-        self.read_proc_icd()
+        self.read_ditem()
+        #self.read_proc_icd()
 
     def read_diagnosis(self):
         self.diag = pd.read_csv(self.diagnosis)
@@ -37,7 +38,7 @@ class Kg_construct_ehr():
         self.pres = pd.read_csv(self.prescription)
 
     def read_charteve(self):
-        self.char = pd.read_csv(self.charteve,chunksize=10000)
+        self.char = pd.read_csv(self.charteve,chunksize=300000)
         self.char_ar = np.array(self.char.get_chunk())
         self.num_char = self.char_ar.shape[0]
 
@@ -46,20 +47,60 @@ class Kg_construct_ehr():
         self.d_item_ar = np.array(self.d_item)
 
     def read_noteevent(self):
-        self.note = pd.read_csv(self.noteevents,chunksize=10000)
+        self.note = pd.read_csv(self.noteevents,chunksize=1000)
 
     def read_proc_icd(self):
         self.proc_icd = pd.read_csv(self.proc_icd)
+
+    def create_kg_dic(self):
+        self.dic_patient = {}
+        self.dic_diag = {}
+        self.dic_item = {}
+        for i in range(self.num_char):
+            itemid = self.char_ar[i][4]
+            value = self.char_ar[i][8]
+            hadm_id = self.char_ar[i][2]
+            if hadm_id not in self.dic_patient:
+                self.dic_patient[hadm_id] = {}
+                #self.dic_patient[hadm_id]['itemid'] = {}
+                self.dic_patient[hadm_id]['nodetype'] = 'patient'
+                self.dic_patient[hadm_id].setdefault(itemid, []).append(value)
+                #self.dic_patient[patient_id]['neighbor_presc'] = {}
+            else:
+                self.dic_patient[hadm_id].setdefault(itemid,[]).append(value)
+
+            if itemid not in self.dic_item:
+                self.dic_item[itemid] = {}
+                self.dic_item[itemid]['nodetype'] = 'item'
+                self.dic_item[itemid].setdefault('neighbor_patient', []).append(hadm_id)
+            else:
+                if hadm_id not in self.dic_item[itemid]['neighbor_patient']:
+                    self.dic_item[itemid].setdefault('neighbor_patient', []).append(hadm_id)
+            #self.dic_patient.setdefault('itemid',[]).append([])
+
+        for i in range(self.diag_ar.shape[0]):
+            hadm_id = self.diag_ar[i][2]
+            diag_icd = self.diag_ar[i][4]
+            if diag_icd not in self.dic_diag:
+                self.dic_diag[diag_icd] = {}
+                self.dic_diag[diag_icd].setdefault('neighbor_patient', []).append(hadm_id)
+                self.dic_diag[diag_icd]['nodetype'] = 'diagnosis'
+            if hadm_id in self.dic_patient:
+                self.dic_patient[hadm_id].setdefault('neighbor_diag',[]).append(diag_icd)
+                self.dic_diag[diag_icd].setdefault('neighbor_patient',[]).append(hadm_id)
+
+
+
 
 
     def create_kg(self):
         self.g = nx.DiGraph()
         for i in range(self.num_char):
-            patient_id = self.char_ar[i][1]
+            patient_id = self.char_ar[i][1]/home/tingyi/ecgtoolkit-cs-git/ECGToolkit/libs/ECGConversion/MUSEXML/MUSEXML/MUSEXMLFormat.cs
             itemid = self.char_ar[i][4]
             value = self.char_ar[i][8]
             itemid_list = np.where(self.d_item_ar == itemid)
-            diag_list = np.where(self.diag_ar[:,1] = patient_id)
+            diag_list = np.where(self.diag_ar[:,1] == patient_id)
             diag_icd9_list = self.diag_ar[:,4][diag_list]
             diag_d_list = [np.where(self.diag_d_ar[:,1] == diag_icd9_list[x])[0] for x in range(diag_icd9_list.shape[0])]
             """
@@ -74,6 +115,7 @@ class Kg_construct_ehr():
             Add diagnosis ICD9 node
             """
             self.g.add_edge(patient_id, itemid, type='')
+
 
 
 
