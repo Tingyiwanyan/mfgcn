@@ -5,6 +5,7 @@ import networkx as nx
 import math
 import time
 import pandas as pd
+from kg_model import hetero_model
 
 class Kg_construct_ehr():
     """
@@ -121,4 +122,6 @@ class Kg_construct_ehr():
 
 if __name__ == "__main__":
     kg = Kg_construct_ehr()
+    kg.create_kg_dic()
+    model = hetero_model(kg)
 

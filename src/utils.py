@@ -565,9 +565,11 @@ class utils(model_optimization):
         #mini_batch_x_label = np.zeros((self.batch_size, self.data_length))
         mini_batch_y_label = np.zeros((self.batch_size, self.class_num))
         #mini_batch_y_mean_pool = np.zeros(3)
+
         """
         get different batch set for different model
         """
+
         batch_center_x = self.get_minibatch(start_nodes)
         if self.option == 5:
             batch_mean_agg = self.get_batch_mean_pooling_neighbor(start_nodes)
