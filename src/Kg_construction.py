@@ -5,7 +5,7 @@ import networkx as nx
 import math
 import time
 import pandas as pd
-from kg_model import hetero_model
+#from kg_model import hetero_model
 
 class Kg_construct_ehr():
     """
@@ -63,12 +63,12 @@ class Kg_construct_ehr():
             hadm_id = self.char_ar[i][2]
             if hadm_id not in self.dic_patient:
                 self.dic_patient[hadm_id] = {}
-                #self.dic_patient[hadm_id]['itemid'] = {}
+                self.dic_patient[hadm_id]['itemid'] = {}
                 self.dic_patient[hadm_id]['nodetype'] = 'patient'
-                self.dic_patient[hadm_id].setdefault(itemid, []).append(value)
+                self.dic_patient[hadm_id]['itemid'].setdefault(itemid, []).append(value)
                 #self.dic_patient[patient_id]['neighbor_presc'] = {}
             else:
-                self.dic_patient[hadm_id].setdefault(itemid,[]).append(value)
+                self.dic_patient[hadm_id]['itemid'].setdefault(itemid,[]).append(value)
 
             if itemid not in self.dic_item:
                 self.dic_item[itemid] = {}
@@ -123,5 +123,5 @@ class Kg_construct_ehr():
 if __name__ == "__main__":
     kg = Kg_construct_ehr()
     kg.create_kg_dic()
-    model = hetero_model(kg)
+    #model = hetero_model(kg)
 
