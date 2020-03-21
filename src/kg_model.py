@@ -60,16 +60,15 @@ class hetero_model():
         generate next move based on current node type
         and current node index
         """
-        meta_path = meta_path
+        meta_path_ = meta_path[1:]
         walk = []
-        walk.append([node_type,index])
+        #walk.append([node_type,index])
         cur_index = index
         cur_node_type = node_type
-        meta_path.pop(0)
-        for i in meta_path:
+        for i in meta_path_:
             if i == 'P':
                 if cur_node_type == 'item':
-                    neighbor = self.kg.dic_item[cur_index]['neighbor_patient']
+                    neighbor = list(self.kg.dic_item[cur_index]['neighbor_patient'])
                     """
                     uniformly generate sampling number
                     """
@@ -78,17 +77,17 @@ class hetero_model():
                     cur_node_type = 'patient'
                     walk.append([cur_node_type,cur_index])
                 if cur_node_type == 'diagnosis':
-                    neighbor = self.kg.dic_diag[cur_index]['neighbor_patient']
+                    neighbor = list(self.kg.dic_diag[cur_index]['neighbor_patient'])
                     """
                     uniformly generate sampling number
                     """
                     random_index = np.int(np.floor(np.random.uniform(0, len(neighbor), 1)))
-                    cur_index = neighbor['neighbor_patient'][random_index]
+                    cur_index = neighbor[random_index]
                     cur_node_type = 'patient'
                     walk.append([cur_node_type,cur_index])
             if i == "D":
                 if cur_node_type == 'patient':
-                    neighbor = self.kg.dic_patient[cur_index]['neighbor_diag']
+                    neighbor = list(self.kg.dic_patient[cur_index]['neighbor_diag'])
                     """
                     uniformly generate sampling number
                     """
@@ -119,10 +118,15 @@ class hetero_model():
         meta path
         """
         walk = []
+        walk.append([node_type,start_index])
         for i in range(self.walk_length_iter):
-            walk += self.generate_next_node(node_type, start_index, self.meta_path1)
+            cur_node_type = walk[-1][0]
+            cur_index = walk[-1][1]
+            walk += self.generate_next_node(cur_node_type, cur_index, self.meta_path1)
 
         return walk
+
+
 
 
 
