@@ -38,7 +38,7 @@ class utils(model_optimization):
             attribute_vector[2] = (np.float(self.G.node[node_index]['productivity_diversity']) - self.mean_prod) / self.std_prod
             attribute_vector[3] = (np.float(self.G.node[node_index]['impact_diversity']) - self.mean_impact) / self.std_impact
             attribute_vector[4] = (np.float(self.G.node[node_index]['scientific_age_diversity']) - self.mean_sci) / self.std_sci
-        if self.data_set == 2 or self.data_set == 3 or self.data_set == 4:
+        if self.data_set == 2 or self.data_set == 3 or self.data_set == 4 or self.data_set == 5 or self.data_set == 6:
             """
             Citeceer dataset
             """

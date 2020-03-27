@@ -1,5 +1,6 @@
 from mpl_toolkits.axisartist.parasite_axes import HostAxes, ParasiteAxes
 import matplotlib.pyplot as plt
+import numpy as np
 
 fig = plt.figure()
 host = HostAxes(fig, [0.15, 0.1, 0.7, 0.8])
@@ -21,16 +22,20 @@ par1.axis["right"].label.set_visible(True)
 #new_axisline = par2.get_grid_helper().new_fixed_axis
 #par2.axis["right2"] = new_axisline(loc="right", axes=par2, offset=offset)
 fig.add_axes(host)
-host.set_xlim(0, 100)
-1
-host.set_ylim(0.6, 0.85)
+host.set_xlim(0, 80)
+host.set_ylim(0.6, 0.8)
 host.set_xlabel("Number of filter size")
 host.set_ylabel("F1 score")
 par1.set_ylabel("Runtime")
-p1, = host.plot([1, 5, 10, 15, 20, 25, 30, 35, 40,50,60,70,80,90,100], [0.66, 0.736, 0.764, 0.778, 0.786, 0.814, 0.786, 0.783, 0.787,0.791,0.789,0.785,0.790,0.792,0.786], 'o-',label="F1 score", linewidth=2.2, color="#59604C")
-p2, = par1.plot([1, 5, 10, 15, 20, 25, 30, 35, 40,50,60,70,80,90,100], [3.52, 3.68, 3.71, 3.72, 3.84, 3.85, 3.87, 3.96, 3.86,3.876,3.83,3.83,3.89,3.97,4.04], '*--', label="Runtime", linewidth=2.2, color="#A35638")
+#p1, = host.plot([1, 5, 10, 15, 20, 25, 30, 35, 40,50,60,70,80,90,100], [0.66, 0.736, 0.764, 0.778, 0.786, 0.814, 0.786, 0.783, 0.787,0.791,0.789,0.785,0.790,0.792,0.786], 'o-',label="F1 score", linewidth=2.2, color="#59604C")
+#p2, = par1.plot([1, 5, 10, 15, 20, 25, 30, 35, 40,50,60,70,80,90,100], [3.52, 3.68, 3.71, 3.72, 3.84, 3.85, 3.87, 3.96, 3.86,3.876,3.83,3.83,3.89,3.97,4.04], '*--', label="Runtime", linewidth=2.2, color="#A35638")
+p1, = host.plot([1, 5, 10, 15, 20, 25, 30, 35, 40,50,60,70,80], [0.691, 0.693, 0.710, 0.715, 0.721, 0.727, 0.703, 0.704, 0.705,0.695,0.706,0.687,0.679], 'o-',label="F1 score", linewidth=2.2, color="#59604C")
+p2, = par1.plot([1, 5, 10, 15, 20, 25, 30, 35, 40,50,60,70,80], [5.13, 5.28, 5.33, 5.76, 5.99, 6.01, 6.54, 6.83, 6.99,7.38,7.85,7.97,8.42], '*--', label="Runtime(second)", linewidth=2.2, color="#A35638")
+#p1, = host.plot([1, 5, 10, 15, 20, 25, 30, 40,50,60,70,80], [0.589, 0.604, 0.614, 0.647, 0.634, 0.621, 0.612, 0.608, 0.531,0.546,0.448,0.486], 'o-',label="F1 score", linewidth=2.2, color="#59604C")
+#p2, = par1.plot([1, 5, 10, 15, 20, 25, 30, 40,50,60,70,80], [19.39, 17.82, 18.902, 18.904, 19.04, 19.509, 18.68, 19.53, 19.795,20.596,21.228,21.562], '*--', label="Runtime(second)", linewidth=2.2, color="#A35638")
 #p3, = par2.plot([0, 1, 2], [50, 30, 15], label="Velocity")
-par1.set_ylim(3.5, 10)
+par1.set_ylim(0, 30)
+#par1.set_ylim(0, 1)
 #par2.set_ylim(3.5, 4.2)
 host.legend(loc="upper left", fontsize=12)
 host.axis["left"].label.set_color(p1.get_color())

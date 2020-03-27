@@ -12,7 +12,7 @@ class Data_loading(object):
         self.data_set = data_set
         if data_set == 1:
             self.init_aminer()
-        if data_set == 2 or data_set == 3 or data_set == 4:
+        if data_set == 2 or data_set == 3 or data_set == 4 or data_set == 5 or data_set == 6:
             self.init_citceer()
 
     def init_aminer(self):
@@ -342,39 +342,92 @@ class Data_loading(object):
             file = open("/home/tingyi/database/wiki/edges.txt")
             file2 = open("/home/tingyi/database/wiki/features.txt")
             file3 = open("/home/tingyi/database/wiki/group.txt")
+        if self.data_set == 5:
+            file = open("/home/tingyi/database/git_web_ml/git_edges.txt")
+            file2 = open("/home/tingyi/database/git_web_ml/git_features.json")
+            file3 = open("/home/tingyi/database/git_web_ml/git_target.txt")
+            self.json_feature = json.load(file2)
+        if self.data_set == 6:
+            file = open("/home/tingyi/database/pubmed/edges.txt")
+            file2 = open("/home/tingyi/database/pubmed/features.txt")
+            file3 = open("/home/tingyi/database/pubmed/group.txt")
 
 
         self.G = nx.DiGraph()
         #index = 0
+        index_newdata = 0
         for line in file:
+            if index_newdata > 5000:
+                break
             line = line.rstrip('\n')
-            a = np.int(np.array(line.split(' '))[0])
-            b = np.int(np.array(line.split(' '))[1])
-            """
-            if not self.G.has_node(a):
-                self.G.add_node(a, node_index=index)
-                #index += 1
-            if not self.G.has_node(b):
-                self.G.add_node(b, node_index=index)
-                #index += 1
-            """
-            self.G.add_edge(a, b)
-            self.G.add_edge(b, a)
+            if self.data_set == 5:
+                a = np.int(np.array(line.split(','))[0])
+                b = np.int(np.array(line.split(','))[1])
+                feat_a = self.json_feature[str(a)]
+                feat_b = self.json_feature[str(b)]
+                #index = np.int(i)
+                self.G.add_edge(a, b)
+                self.G.add_edge(b, a)
+                self.G.add_node(a, node_index=index_newdata)
+                self.G.add_node(a, feature=feat_a)
+                index_newdata += 1
+                self.G.add_node(b, node_index=index_newdata)
+                self.G.add_node(b, feature=feat_b)
+                index_newdata += 1
 
-        for line in file2:
-            line = line.rstrip('\n')
-            feat = np.array(line.split(' '))
-            feat = [float(i) for i in feat]
-            index = np.int(feat[0])
-            feat = feat[1:]
-            self.G.add_node(index,node_index=index)
-            self.G.add_node(index,feature=feat)
+            else:
+                a = np.int(np.array(line.split(' '))[0])
+                b = np.int(np.array(line.split(' '))[1])
+                index_newdata += 1
+                """
+                if not self.G.has_node(a):
+                    self.G.add_node(a, node_index=index)
+                    #index += 1
+                if not self.G.has_node(b):
+                    self.G.add_node(b, node_index=index)
+                    #index += 1
+                """
+                self.G.add_edge(a, b)
+                self.G.add_edge(b, a)
+        """
+        if self.data_set == 5:
+            for i in self.json_feature.keys():
+                feat = self.json_feature[i]
+                index = np.int(i)
+                self.G.add_node(index, node_index=index)
+                self.G.add_node(index, feature=feat)
+        """
+
+        index_pubmed = 0
+        if self.data_set != 5:
+            for line in file2:
+                line = line.rstrip('\n')
+                feat = np.array(line.split(' '))
+                """
+                suit for role2vec
+                """
+                #feat = [float(i) for i in feat]
+                feat = [np.around(float(i),decimals=1) for i in feat]
+                index = np.int(feat[0])
+                feat = feat[1:]
+                if self.G.has_node(index):
+                    self.G.add_node(index,node_index=index_pubmed)
+                    self.G.add_node(index,feature=feat)
+                    index_pubmed += 1
 
         for line in file3:
-            line = line.rstrip('\n')
-            node = np.int(np.array(line.split(' '))[0])
-            label = np.int(np.array(line.split(' '))[1])
-            self.G.add_node(node, label=label)
+            if self.data_set == 5:
+                line = line.rstrip('\n')
+                node = np.int(np.array(line.split(','))[0])
+                label = np.int(np.array(line.split(','))[2])
+                if self.G.has_node(node):
+                    self.G.add_node(node, label=label)
+            else:
+                line = line.rstrip('\n')
+                node = np.int(np.array(line.split(' '))[0])
+                label = np.int(np.array(line.split(' '))[1])
+                if self.G.has_node(node):
+                    self.G.add_node(node, label=label)
 
 
 

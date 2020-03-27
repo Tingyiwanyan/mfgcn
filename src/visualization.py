@@ -55,6 +55,12 @@ class visualization(object):
                 color_ = 'orange'
             if self.label_whole[i] == 7:
                 color_ = 'pink'
+            if self.label_whole[i] == 8:
+                color_ = 'grey'
+            if self.label_whole[i] == 9:
+                color_ = 'gold'
+            if self.label_whole[i] == 10:
+                color_ = 'navy'
             plt.plot(self.embedding_2d[i][0], self.embedding_2d[i][1], '.', color=color_, markersize=3)
 
         plt.show()

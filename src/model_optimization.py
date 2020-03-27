@@ -31,7 +31,7 @@ class model_optimization(Data_process):
             self.latent_dim_gcn2 = 100
             self.latent_dim_a = 100
             self.negative_sample_size = 100
-        if data_set == 2 or data_set == 3 or data_set ==4:
+        if data_set == 2 or data_set == 3 or data_set ==4 or data_set == 5 or data_set == 6:
             """
             citeceer data set 
             """
@@ -44,6 +44,12 @@ class model_optimization(Data_process):
             if data_set == 4:
                 self.attribute_size = 4973
                 self.class_num = 17
+            if data_set == 5:
+                self.attribute_size = 19
+                self.class_num = 2
+            if data_set == 6:
+                self.attribute_size = 500
+                self.class_num = 3
             self.latent_dim = 100
             self.latent_dim_gcn = 16
             self.latent_dim_gcn2 = 50
@@ -59,7 +65,7 @@ class model_optimization(Data_process):
         self.combined_embed = None
         self.option = option
         self.option_structure = option_structure
-        self.filter_num = 100
+        self.filter_num = 1
 
 
         """

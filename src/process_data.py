@@ -24,7 +24,7 @@ class Data_process(Data_loading):
         self.train_cut_edge = None
         self.prop_pos = 0.62
         self.prop_neg = 0.5
-        self.prop_nc = 0.3
+        self.prop_nc = 0.5
         self.prop_cut_node = 0.9
         self.npos = np.int(self.prop_pos*self.n_edges)
         self.n_nc = np.int(self.prop_nc*self.n_nodes)
