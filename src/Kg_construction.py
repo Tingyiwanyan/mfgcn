@@ -57,6 +57,8 @@ class Kg_construct_ehr():
         self.dic_patient = {}
         self.dic_diag = {}
         self.dic_item = {}
+        index_item = 0
+        index_diag = 0
         for i in range(self.num_char):
             itemid = self.char_ar[i][4]
             value = self.char_ar[i][8]
@@ -74,6 +76,8 @@ class Kg_construct_ehr():
                 self.dic_item[itemid] = {}
                 self.dic_item[itemid]['nodetype'] = 'item'
                 self.dic_item[itemid].setdefault('neighbor_patient', []).append(hadm_id)
+                self.dic_item[itemid]['item_index'] = index_item
+                index_item += 1
             else:
                 if hadm_id not in self.dic_item[itemid]['neighbor_patient']:
                     self.dic_item[itemid].setdefault('neighbor_patient', []).append(hadm_id)
@@ -87,6 +91,8 @@ class Kg_construct_ehr():
                     self.dic_diag[diag_icd] = {}
                     self.dic_diag[diag_icd].setdefault('neighbor_patient', []).append(hadm_id)
                     self.dic_diag[diag_icd]['nodetype'] = 'diagnosis'
+                    self.dic_diag[diag_icd]['diag_index'] = index_diag
+                    index_diag += 1
                 else:
                     self.dic_patient[hadm_id].setdefault('neighbor_diag',[]).append(diag_icd)
                     self.dic_diag[diag_icd].setdefault('neighbor_patient',[]).append(hadm_id)
