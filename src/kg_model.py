@@ -18,6 +18,9 @@ class hetero_model():
         self.diagnosis_size =len(list(kg.dic_diag))
         self.patient_size = len(list(kg.dic_patient))
         self.kg = kg
+        self.x_origin = None
+        self.x_negative = None
+
 
         self.shape_relation = (self.latent_dim, )
         self.init_test = tf.keras.initializers.he_normal(seed=None)
@@ -84,6 +87,183 @@ class hetero_model():
                                            units=self.latent_dim,
                                            kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                            activation=tf.nn.relu)
+
+    """
+    Implement transE for item and diagnosis
+    """
+    def transE(self):
+        self.Dense_item_trans = tf.math.add(self.Dense_item, self.relation_test)
+        self.Dense_diag_trans = tf.math.subtract(self.Dense_diag, self.relation_diag)
+
+
+    """
+    get center node and positive & negative latent representation for one center node sample
+    """
+    def get_latent_rep(self,center_node_type):
+        #meta_path_sample = self.extract_meta_path(center_node_type, center_node_index, meta_path_type)
+        #patient_nodes, item_nodes, diag_nodes = get_positive_sample_metapath(meta_path_sample)
+        self.x_skip_patient = None
+        self.x_negative_patient = None
+        self.x_skip_item = None
+        self.x_negative_item = None
+        self.x_skip_diag = None
+        self.x_negative_diag = None
+        if center_node_type == 'patient':
+            idx_origin = tf.constant([0])
+            self.x_origin = tf.gather(self.Dense_patient, idx_origin, axis=1)
+
+        if center_node_type == 'item':
+            idx_origin = tf.constant([0])
+            self.x_origin = tf.gather(self.Dense_item, idx_origin, axis=1)
+
+        if center_node_type == 'diagnosis':
+            idx_origin = tf.constant([0])
+            self.x_origin = tf.gather(self.Dense_diag, idx_origin, axis=1)
+
+        """
+        Case where center node is patient
+        """
+        if center_node_type == 'patient':
+            if self.length_patient_pos > 1:
+                patient_idx_skip = tf.constant([i + 1 for i in range(self.length_patient_pos)])
+                self.x_skip_patient = tf.gather(self.Dense_patient, patient_idx_skip, axis=1)
+            if not self.length_patient_neg == 0:
+                patient_idx_negative = \
+                    tf.constant([i + 1 + self.length_patient_pos for i in range(self.length_patient_neg)])
+                self.x_negative_patient = tf.gather(self.Dense_patient, patient_idx_negative, axis=1)
+            """
+            getting positive samples
+            """
+            if not self.length_item_pos == 0:
+                item_idx_skip = tf.constant([i for i in range(self.length_item_pos)])
+                self.x_skip_item = tf.gather(self.Dense_item, item_idx_skip, axis=1)
+            if not self.length_diag_pos == 0:
+                diag_idx_skip = tf.constant([i for i in range(self.length_diag_pos)])
+                self.x_skip_diag = tf.gather(self.Dense_diag, diag_idx_skip, axis=1)
+            """
+            getting negative samples
+            """
+            if not self.length_item_neg == 0:
+                item_idx_negative = \
+                    tf.constant([i + self.length_item_pos for i in range(self.length_item_neg)])
+                self.x_negative_item = tf.gather(self.Dense_item, item_idx_negative, axis=1)
+            if not self.length_diag_neg == 0:
+                diag_idx_negative = \
+                    tf.constant([i + self.length_diag_pos for i in range(self.length_diag_neg)])
+                self.x_negative_diag = tf.gather(self.Dense_diag, diag_idx_negative, axis=1)
+
+        """
+        Case where center node is item
+        """
+        if center_node_type == 'item':
+            if self.length_item_pos > 1:
+                item_idx_skip = tf.constant([i + 1 for i in range(self.length_item_pos)])
+                self.x_skip_item = tf.gather(self.Dense_item, item_idx_skip, axis=1)
+            if not self.length_item_neg == 0:
+                item_idx_negative = \
+                    tf.constant([i + 1 + self.length_item_pos for i in range(self.length_item_neg)])
+                self.x_negative_item = tf.gather(self.Dense_item, item_idx_negative, axis=1)
+            """
+            getting positive samples
+            """
+            if not self.length_patient_pos == 0:
+                patient_idx_skip = tf.constant([i for i in range(self.length_patient_pos)])
+                self.x_skip_patient = tf.gather(self.Dense_patient, patient_idx_skip, axis=1)
+            if not self.length_diag_pos == 0:
+                diag_idx_skip = tf.constant([i for i in range(self.length_diag_pos)])
+                self.x_skip_diag = tf.gather(self.Dense_diag, diag_idx_skip, axis=1)
+            """
+            getting negative samples
+            """
+            if not self.length_patient_neg == 0:
+                patient_idx_negative = \
+                    tf.constant([i + self.length_patient_pos for i in range(self.length_patient_neg)])
+                self.x_negative_patient = tf.gather(self.Dense_patient, patient_idx_negative, axis=1)
+            if not self.length_diag_neg == 0:
+                diag_idx_negative = \
+                    tf.constant([i + self.length_diag_pos for i in range(self.length_diag_neg)])
+                self.x_negative_diag = tf.gather(self.Dense_diag, diag_idx_negative, axis=1)
+
+        """
+        Case where center node is diag
+        """
+        if center_node_type == 'diagnosis':
+            if self.length_diag_pos > 1:
+                diag_idx_skip = tf.constant([i + 1 for i in range(self.length_diag_pos)])
+                self.x_skip_diag = tf.gather(self.Dense_diag, diag_idx_skip, axis=1)
+            if not self.length_diag_neg == 0:
+                diag_idx_negative = \
+                    tf.constant([i + 1 + self.length_diag_pos for i in range(self.length_diag_neg)])
+                self.x_negative_diag = tf.gather(self.Dense_diag, diag_idx_negative, axis=1)
+            """
+            getting positive samples
+            """
+            if not self.length_patient_pos == 0:
+                patient_idx_skip = tf.constant([i for i in range(self.length_item_pos)])
+                self.x_skip_patient = tf.gather(self.Dense_patient, patient_idx_skip, axis=1)
+            if not self.length_item_pos == 0:
+                item_idx_skip = tf.constant([i for i in range(self.length_item_pos)])
+                self.x_skip_item = tf.gather(self.Dense_item, item_idx_skip, axis=1)
+            """
+            getting negative samples
+            """
+            if not self.length_patient_neg == 0:
+                patient_idx_negative = \
+                    tf.constant([i + self.length_patient_pos for i in range(self.length_patient_neg)])
+                self.x_negative_patient = tf.gather(self.Dense_patient, patient_idx_negative, axis=1)
+            if not self.length_item_neg == 0:
+                item_idx_negative = \
+                    tf.constant([i + self.length_diag_pos for i in range(self.length_item_neg)])
+                self.x_negative_item = tf.gather(self.Dense_item, item_idx_negative, axis=1)
+
+        """
+        combine skip samples and negative samples
+        """
+        if not self.x_skip_patient == None:
+            self.x_skip = self.x_skip_patient
+            if not self.x_skip_item == None:
+                self.x_skip = tf.stack([self.x_skip,self.x_skip_item])
+            if not self.x_skip_diag == None:
+                self.x_skip = tf.stack([self.x_skip,self.x_skip_diag])
+
+        elif not self.x_skip_item == None:
+            self.x_skip = self.x_skip_item
+            if not self.x_skip_patient == None:
+                self.x_skip = tf.stack([self.x_skip,self.x_skip_patient])
+            if not self.
+
+
+
+    def SGNN_loss(self):
+        """
+        Implement sgnn with new structure
+        """
+
+        negative_training_norm = tf.math.l2_normalize(self.x_negative, axis=2)
+
+        skip_training = tf.broadcast_to(self.x_origin, [self.batch_size, self.negative_sample_size, self.latent_dim])
+
+        skip_training_norm = tf.math.l2_normalize(skip_training, axis=2)
+
+        dot_prod = tf.multiply(skip_training_norm, negative_training_norm)
+
+        dot_prod_sum = tf.reduce_sum(dot_prod, 2)
+
+        sum_log_dot_prod = tf.math.log(tf.math.sigmoid(tf.math.negative(tf.reduce_mean(dot_prod_sum, 1))))
+
+        positive_training = tf.broadcast_to(self.x_origin, [self.batch_size, self.walk_length, self.latent_dim])
+
+        positive_skip_norm = tf.math.l2_normalize(self.x_skip, axis=2)
+
+        positive_training_norm = tf.math.l2_normalize(positive_training, axis=2)
+
+        dot_prod_positive = tf.multiply(positive_skip_norm, positive_training_norm)
+
+        dot_prod_sum_positive = tf.reduce_sum(dot_prod_positive, 2)
+
+        sum_log_dot_prod_positive = tf.math.log(tf.math.sigmoid(tf.reduce_mean(dot_prod_sum_positive, 1)))
+
+        self.negative_sum = tf.math.negative(tf.reduce_sum(tf.math.add(sum_log_dot_prod, sum_log_dot_prod_positive)))
 
 
     def generate_next_node(self, node_type, index, meta_path):
@@ -192,6 +372,10 @@ class hetero_model():
                 diag_sample = self.assign_value_diag(diag_id)
                 diag_nodes.append(diag_sample)
 
+        self.length_patient_pos = len(patient_nodes)
+        self.length_item_pos = len(item_nodes)
+        self.length_diag_pos = len(diag_nodes)
+
         return np.array(patient_nodes), np.array(item_nodes), np.array(diag_nodes)
 
     """
@@ -204,13 +388,13 @@ class hetero_model():
         neg_nodes_patient, neg_nodes_item, neg_nodes_diag = \
             self.get_negative_samples(center_node_type,center_node_index)
 
-        length_patient = len(neg_nodes_patient)
-        length_item = len(neg_nodes_item)
-        length_diag = len(neg_nodes_diag)
+        self.length_patient_neg = len(neg_nodes_patient)
+        self.length_item_neg = len(neg_nodes_item)
+        self.length_diag_neg = len(neg_nodes_diag)
 
         if not neg_nodes_patient == []:
             index = 0
-            patient_neg_sample = np.zeros((length_patient, self.item_size))
+            patient_neg_sample = np.zeros((self.length_patient_neg, self.item_size))
             for i in neg_nodes_patient:
                 one_sample_neg_patient = self.assign_value_patient(i)
                 patient_neg_sample[index,:] = one_sample_neg_patient
@@ -218,7 +402,7 @@ class hetero_model():
 
         if not neg_nodes_item == []:
             index = 0
-            item_neg_sample = np.zeros((length_item, self.item_size))
+            item_neg_sample = np.zeros((self.length_item_neg, self.item_size))
             for i in neg_nodes_item:
                 one_sample_neg_item = self.assign_value_item(i)
                 item_neg_sample[index,:] = one_sample_neg_item
@@ -226,7 +410,7 @@ class hetero_model():
 
         if not neg_nodes_diag == []:
             index = 0
-            diag_neg_sample = np.zeros((length_diag, self.diagnosis_size))
+            diag_neg_sample = np.zeros((self.length_diag_neg, self.diagnosis_size))
             for i in neg_nodes_diag:
                 one_sample_neg_diag = self.assign_value_diag(i)
                 diag_neg_sample[index,:] = one_sample_neg_diag
