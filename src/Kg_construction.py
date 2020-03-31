@@ -92,6 +92,7 @@ class Kg_construct_ehr():
                     self.dic_diag[diag_icd].setdefault('neighbor_patient', []).append(hadm_id)
                     self.dic_diag[diag_icd]['nodetype'] = 'diagnosis'
                     self.dic_diag[diag_icd]['diag_index'] = index_diag
+                    self.dic_patient[hadm_id].setdefault('neighbor_diag', []).append(diag_icd)
                     index_diag += 1
                 else:
                     self.dic_patient[hadm_id].setdefault('neighbor_diag',[]).append(diag_icd)
