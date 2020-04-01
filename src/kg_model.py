@@ -12,13 +12,13 @@ class hetero_model():
     def __init__(self,kg):
         self.batch_size = 16
         self.epoch = 6
-        self.walk_length_iter = 5
+        self.walk_length_iter = 4
         self.latent_dim = 100
         self.negative_sample_size = 30
-        self.positive_sample_size = 21
-        self.length_patient_pos = 11
-        self.length_item_pos = 6
-        self.length_diag_pos = 5
+        self.positive_sample_size = 24
+        self.length_patient_pos = 12
+        self.length_item_pos = 5
+        self.length_diag_pos = 8
         self.length_patient_neg = 0
         self.length_item_neg = 15
         self.length_diag_neg = 15
@@ -62,7 +62,7 @@ class hetero_model():
         """
         Create meta-path type
         """
-        self.meta_path1 = ['I','P','D','P','I']
+        self.meta_path1 = ['I','P','D','P','D','P','I']
         self.meta_path2 = ['P','D','P']
         self.meta_path3 = ['I','P','I']
         self.meta_path4 = ['P','I','P']
@@ -100,6 +100,7 @@ class hetero_model():
     test model accuracy
     """
     def test(self, patient_id):
+        self.patient_id_test = patient_id
         patient = np.zeros((1,self.item_size))
         patient[0,:] = self.assign_value_patient(patient_id)
         embed_patient = self.sess.run([self.Dense_patient],feed_dict={self.patient:patient})
@@ -126,10 +127,17 @@ class hetero_model():
             self.embed_diag[index,:] = embed_diag_single
             self.pos_score_diag[index] = np.sum(np.multiply(embed_patient_norm, embed_diag_single))
 
+        self.seq_diag = sorted(self.pos_score_diag)
+        self.seq_item = sorted(self.pos_score_item)
+        self.seq_diag.reverse()
+        self.seq_item.reverse()
+
+        self.index_diag = [list(self.pos_score_diag).index(v) for v in self.seq_diag]
+        self.index_item = [list(self.pos_score_item).index(v) for v in self.seq_item]
 
         correct_detect_num_item = 0
         num_item = len(self.kg.dic_patient[patient_id]['itemid'].keys())
-        detect_index_item = np.array(np.where(self.pos_score_item>0))
+        detect_index_item = np.array(np.where(self.pos_score_item>0.5))
         num_total_detect_item = len(detect_index_item)
         for j in self.kg.dic_patient[patient_id]['itemid'].keys():
             index_item = self.kg.dic_item[j]['item_index']
@@ -140,7 +148,7 @@ class hetero_model():
 
         correct_detect_num_diag = 0
         num_diag = len(self.kg.dic_patient[patient_id]['neighbor_diag'])
-        detect_index_diag = np.array(np.where(self.pos_score_diag > 0))
+        detect_index_diag = np.array(np.where(self.pos_score_diag > 0.9))
         num_total_detect_diag = len(detect_index_diag)
         for j in self.kg.dic_patient[patient_id]['neighbor_diag']:
             index_diag = self.kg.dic_diag[j]['diag_index']
@@ -150,7 +158,46 @@ class hetero_model():
         pos_rate_diag = correct_detect_num_diag / np.float(num_diag)
 
 
-        return embed_patient_norm, pos_rate_item, pos_rate_diag
+        return pos_rate_item, pos_rate_diag
+
+    """
+    get the ranked item, diag for one patient
+    """
+    def recommandation(self):
+        length_diag = len(np.where(np.array(self.seq_diag)>0.9)[0])
+        index_pick_diag = self.index_diag[0:length_diag]
+        self.ICD = []
+        for i in self.kg.dic_diag.keys():
+            if self.kg.dic_diag[i]['diag_index'] in index_pick_diag:
+                self.ICD.append(i)
+        length_item = len(np.where(np.array(self.seq_item)>0.5)[0])
+        self.item_test = []
+        index_pick_item = self.index_item[0:length_item]
+        for i in self.kg.dic_item.keys():
+            if self.kg.dic_item[i]['item_index'] in index_pick_item:
+                self.item_test.append(i)
+
+        self.diagnosis_recom = []
+        self.item_test_recom = []
+        for i in range(len(self.ICD)):
+            ICD_diag = self.ICD[i]
+            if ICD_diag in self.kg.diag_d_ar[:,1]:
+                index_ICD_diag = np.where(self.kg.diag_d_ar[:,1] == ICD_diag)[0][0]
+                diagnosis = self.kg.diag_d_ar[index_ICD_diag][3]
+                self.diagnosis_recom.append([ICD_diag,diagnosis])
+        for i in range(len(self.item_test)):
+            item_id = self.item_test[i]
+            index_item_id = np.where(self.kg.d_item_ar[:,1] == item_id)[0][0]
+            item_test_name = self.kg.d_item_ar[index_item_id][2]
+            if item_id in self.kg.dic_patient[self.patient_id_test]['itemid'].keys():
+                item_test_value = np.mean(self.kg.dic_patient[self.patient_id_test]['itemid'][item_id])
+                self.item_test_recom.append([item_id,item_test_name,item_test_value])
+
+
+
+
+
+
 
 
     def build_hetero_model(self):
