@@ -11,7 +11,7 @@ if __name__ == "__main__":
   utils input arguments: (option for data set, option for using different model, option for doing different tasks,
   option for choosing random walk strategy,option of whether to add structure)
   """
-  utils = utils(6,5,1,1,2)
+  utils = utils(6,3,1,2,1)
 
   utils.config_train_test()
   utils.config_model()

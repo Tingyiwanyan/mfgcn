@@ -348,9 +348,10 @@ class Data_loading(object):
             file3 = open("/home/tingyi/database/git_web_ml/git_target.txt")
             self.json_feature = json.load(file2)
         if self.data_set == 6:
-            file = open("/home/tingyi/database/pubmed/edges.txt")
-            file2 = open("/home/tingyi/database/pubmed/features.txt")
-            file3 = open("/home/tingyi/database/pubmed/group.txt")
+            file = open("/home/tingyi/database/edges.txt")
+            file2 = open("/home/tingyi/database/features.txt")
+            #file3 = open("/home/tingyi/database/pubmed/group.txt")
+
 
 
         self.G = nx.DiGraph()
@@ -376,8 +377,8 @@ class Data_loading(object):
                 index_newdata += 1
 
             else:
-                a = np.int(np.array(line.split(' '))[0])
-                b = np.int(np.array(line.split(' '))[1])
+                a = np.int(np.array(line.split('\t'))[0])
+                b = np.int(np.array(line.split('\t'))[1])
                 index_newdata += 1
                 """
                 if not self.G.has_node(a):
@@ -402,7 +403,7 @@ class Data_loading(object):
         if self.data_set != 5:
             for line in file2:
                 line = line.rstrip('\n')
-                feat = np.array(line.split(' '))
+                feat = np.array(line.split('\t'))
                 """
                 suit for role2vec
                 """
@@ -413,6 +414,7 @@ class Data_loading(object):
                 if self.G.has_node(index):
                     self.G.add_node(index,node_index=index_pubmed)
                     self.G.add_node(index,feature=feat)
+                    self.G.add_node(index,label=1)
                     index_pubmed += 1
 
         for line in file3:

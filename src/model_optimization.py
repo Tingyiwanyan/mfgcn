@@ -48,7 +48,7 @@ class model_optimization(Data_process):
                 self.attribute_size = 19
                 self.class_num = 2
             if data_set == 6:
-                self.attribute_size = 500
+                self.attribute_size = 5
                 self.class_num = 3
             self.latent_dim = 100
             self.latent_dim_gcn = 16

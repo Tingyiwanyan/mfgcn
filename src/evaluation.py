@@ -362,6 +362,29 @@ class evaluation(object):
                 predict_correct += 1
         self.tp_rate = predict_correct / np.float(len(self.test_nodes))
 
+    """
+    generate kmeans, only for mf-gcn
+    """
+    def generate_kmeans(self,utils):
+        nodes_total = [i for i in self.G.nodes]
+        final_embed = np.zeros((4792,100))
+        embed_label = np.zeros((4792))
+        index = 0
+        for i in nodes_total:
+            embedlabel[index] = i
+            x_gcn1 = self.get_test_embed_mfgcn(i, utils)
+            x_center1 = self.get_test_embed_raw(i, utils)
+            embed1 = \
+            utils.sess.run([utils.Dense_layer_fc_gcn], feed_dict={utils.x_gcn: x_gcn1, utils.x_center: x_center1})[0][0,
+            0, :]
+            final_embed[index,:] = embed1
+            index += 1
+
+        return final_embed,embed_label
+
+
+
+
 
 def cal_auc(score_pos,score_neg,roc_resolution,test_number_pos,test_number_neg):
     threshold = -1
