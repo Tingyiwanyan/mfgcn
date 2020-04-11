@@ -40,7 +40,7 @@ class Kg_construct_ehr():
         self.pres = pd.read_csv(self.prescription)
 
     def read_charteve(self):
-        self.char = pd.read_csv(self.charteve,chunksize=300000)
+        self.char = pd.read_csv(self.charteve,chunksize=3000000)
         self.char_ar = np.array(self.char.get_chunk())
         self.num_char = self.char_ar.shape[0]
 
@@ -65,14 +65,18 @@ class Kg_construct_ehr():
             itemid = self.char_ar[i][4]
             value = self.char_ar[i][8]
             hadm_id = self.char_ar[i][2]
-            patient_id = self.char[i][1]
+            patient_id = self.char_ar[i][1]
             date_time = self.char_ar[i][5].split(' ')
             date = [np.int(i) for i in date_time[0].split('-')]
+            date_value = date[0]*10000+date[1]*100+date[2]
             time = [np.int(i) for i in date_time[1].split(':')]
+            time_value = time[0]*100 + time[1]
+            date_time_value = date_value*10000+time_value
             if hadm_id not in self.dic_patient:
                 self.dic_patient[hadm_id] = {}
                 self.dic_patient[hadm_id]['itemid'] = {}
                 self.dic_patient[hadm_id]['nodetype'] = 'patient'
+                self.dic_patient[hadm_id]['next_admission'] = None
                 self.dic_patient[hadm_id]['itemid'].setdefault(itemid, []).append(value)
                 #self.dic_patient[patient_id]['neighbor_presc'] = {}
             else:
@@ -83,8 +87,34 @@ class Kg_construct_ehr():
                 self.dic_patient_addmission[patient_id][hadm_id] = {}
                 self.dic_patient_addmission[patient_id][hadm_id]['date_time'] = date_time
                 self.dic_patient_addmission[patient_id][hadm_id]['date'] = date
+                self.dic_patient_addmission[patient_id][hadm_id]['date_value'] = date_value
                 self.dic_patient_addmission[patient_id][hadm_id]['time'] = time
-                self.dic_patient_addmission[patient_id]['time_series'].setdefault(hadm_id,[]).append()
+                self.dic_patient_addmission[patient_id][hadm_id]['time_value'] = time_value
+                self.dic_patient_addmission[patient_id][hadm_id]['date_time_value'] = date_time_value
+                self.dic_patient_addmission[patient_id].setdefault('time_series',[]).append(hadm_id)
+            else:
+                if hadm_id not in self.dic_patient_addmission[patient_id]['time_series']:
+                    self.dic_patient_addmission[patient_id][hadm_id] = {}
+                    self.dic_patient_addmission[patient_id][hadm_id]['date_time'] = date_time
+                    self.dic_patient_addmission[patient_id][hadm_id]['date'] = date
+                    self.dic_patient_addmission[patient_id][hadm_id]['time'] = time
+                    self.dic_patient_addmission[patient_id][hadm_id]['date_value'] = date_value
+                    self.dic_patient_addmission[patient_id][hadm_id]['time_value'] = time_value
+                    self.dic_patient_addmission[patient_id][hadm_id]['date_time_value'] = date_time_value
+                    index = 0
+                    flag = 0
+                    for i in self.dic_patient_addmission[patient_id]['time_series']:
+                        if date_time_value < self.dic_patient_addmission[patient_id][i]['date_time_value']:
+                            self.dic_patient_addmission[patient_id]['time_series'].insert(index,hadm_id)
+                            self.dic_patient[hadm_id]['next_admission'] = i
+                            if not index == 0:
+                                self.dic_patient[self.dic_patient_addmission[patient_id]['time_series'][index-1]]['next_admission'] = hadm_id
+                            flag = 1
+                            break
+                        index += 1
+                    if flag == 0:
+                        self.dic_patient[self.dic_patient_addmission[patient_id]['time_series'][-1]]['next_admission'] = hadm_id
+                        self.dic_patient_addmission[patient_id].setdefault('time_series', []).append(hadm_id)
 
 
             if itemid not in self.dic_item:

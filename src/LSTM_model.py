@@ -14,6 +14,7 @@ class LSTM_model():
         initialization for varies variables
         """
         self.kg = kg
+        self.batch_size = 32
         self.hetro_model = hetro_model
         self.time_sequence = 3
         self.latent_dim = 100
@@ -118,7 +119,7 @@ class LSTM_model():
         tf.global_variables_initializer().run()
         tf.local_variables_initializer().run()
 
-    def train(self):
+    #def get
 
 
 
