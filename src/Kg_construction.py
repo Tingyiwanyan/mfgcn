@@ -6,6 +6,7 @@ import math
 import time
 import pandas as pd
 from kg_model import hetero_model
+from LSTM_model import LSTM_model
 
 class Kg_construct_ehr():
     """
@@ -57,12 +58,17 @@ class Kg_construct_ehr():
         self.dic_patient = {}
         self.dic_diag = {}
         self.dic_item = {}
+        self.dic_patient_addmission = {}
         index_item = 0
         index_diag = 0
         for i in range(self.num_char):
             itemid = self.char_ar[i][4]
             value = self.char_ar[i][8]
             hadm_id = self.char_ar[i][2]
+            patient_id = self.char[i][1]
+            date_time = self.char_ar[i][5].split(' ')
+            date = [np.int(i) for i in date_time[0].split('-')]
+            time = [np.int(i) for i in date_time[1].split(':')]
             if hadm_id not in self.dic_patient:
                 self.dic_patient[hadm_id] = {}
                 self.dic_patient[hadm_id]['itemid'] = {}
@@ -71,6 +77,15 @@ class Kg_construct_ehr():
                 #self.dic_patient[patient_id]['neighbor_presc'] = {}
             else:
                 self.dic_patient[hadm_id]['itemid'].setdefault(itemid,[]).append(value)
+
+            if patient_id not in self.dic_patient_addmission:
+                self.dic_patient_addmission[patient_id] = {}
+                self.dic_patient_addmission[patient_id][hadm_id] = {}
+                self.dic_patient_addmission[patient_id][hadm_id]['date_time'] = date_time
+                self.dic_patient_addmission[patient_id][hadm_id]['date'] = date
+                self.dic_patient_addmission[patient_id][hadm_id]['time'] = time
+                self.dic_patient_addmission[patient_id]['time_series'].setdefault(hadm_id,[]).append()
+
 
             if itemid not in self.dic_item:
                 self.dic_item[itemid] = {}
@@ -131,5 +146,6 @@ class Kg_construct_ehr():
 if __name__ == "__main__":
     kg = Kg_construct_ehr()
     kg.create_kg_dic()
-    model = hetero_model(kg)
+    hetro_model = hetero_model(kg)
+    LSTM_model = LSTM_model(kg,hetro_model)
 
