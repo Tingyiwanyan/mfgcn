@@ -460,9 +460,14 @@ class hetero_model():
     def assign_value_patient(self, patientid):
         one_sample = np.zeros(self.item_size)
         for i in self.kg.dic_patient[patientid]['itemid'].keys():
+            mean = self.kg.dic_item[i]['mean_value']
+            std = self.kg.dic_item[i]['std']
             ave_value = np.mean(self.kg.dic_patient[patientid]['itemid'][i])
             index = self.kg.dic_item[i]['item_index']
-            one_sample[index] = ave_value
+            if std == 0:
+                one_sample[index] = 0
+            else:
+                one_sample[index] = (np.float(ave_value)-mean)/std
 
         return one_sample
 
@@ -483,6 +488,17 @@ class hetero_model():
         one_sample = np.zeros(self.diagnosis_size)
         index = self.kg.dic_diag[diagid]['diag_index']
         one_sample[index] = 1
+
+        return one_sample
+
+    """
+    assign multi-hot diagnosis to one patient
+    """
+    def assign_multi_hot(self,patientid):
+        one_sample = np.zeros(self.diagnosis_size)
+        for i in self.kg.dic_patient[patientid]['neighbor_diag']:
+            index = self.kg.dic_diag[i]['diag_index']
+            one_sample[index] = 1
 
         return one_sample
 

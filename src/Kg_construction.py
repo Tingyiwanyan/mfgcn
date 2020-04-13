@@ -7,6 +7,7 @@ import time
 import pandas as pd
 from kg_model import hetero_model
 from LSTM_model import LSTM_model
+from kg_process_data import kg_process_data
 
 class Kg_construct_ehr():
     """
@@ -72,6 +73,19 @@ class Kg_construct_ehr():
             time = [np.int(i) for i in date_time[1].split(':')]
             time_value = time[0]*100 + time[1]
             date_time_value = date_value*10000+time_value
+            if itemid not in self.dic_item:
+                self.dic_item[itemid] = {}
+                self.dic_item[itemid]['nodetype'] = 'item'
+                self.dic_item[itemid].setdefault('neighbor_patient', []).append(hadm_id)
+                self.dic_item[itemid]['item_index'] = index_item
+                self.dic_item[itemid].setdefault('value', []).append(value)
+                #self.dic_item[itemid]['mean_value'] = []
+                index_item += 1
+            else:
+                self.dic_item[itemid].setdefault('value', []).append(value)
+                if hadm_id not in self.dic_item[itemid]['neighbor_patient']:
+                    self.dic_item[itemid].setdefault('neighbor_patient', []).append(hadm_id)
+
             if hadm_id not in self.dic_patient:
                 self.dic_patient[hadm_id] = {}
                 self.dic_patient[hadm_id]['itemid'] = {}
@@ -117,15 +131,7 @@ class Kg_construct_ehr():
                         self.dic_patient_addmission[patient_id].setdefault('time_series', []).append(hadm_id)
 
 
-            if itemid not in self.dic_item:
-                self.dic_item[itemid] = {}
-                self.dic_item[itemid]['nodetype'] = 'item'
-                self.dic_item[itemid].setdefault('neighbor_patient', []).append(hadm_id)
-                self.dic_item[itemid]['item_index'] = index_item
-                index_item += 1
-            else:
-                if hadm_id not in self.dic_item[itemid]['neighbor_patient']:
-                    self.dic_item[itemid].setdefault('neighbor_patient', []).append(hadm_id)
+
             #self.dic_patient.setdefault('itemid',[]).append([])
 
         for i in range(self.diag_ar.shape[0]):
@@ -143,6 +149,9 @@ class Kg_construct_ehr():
                     self.dic_patient[hadm_id].setdefault('neighbor_diag',[]).append(diag_icd)
                     self.dic_diag[diag_icd].setdefault('neighbor_patient',[]).append(hadm_id)
 
+        for i in self.dic_item.keys():
+            self.dic_item[i]['mean_value'] = np.mean(self.dic_item[i]['value'])
+            self.dic_item[i]['std'] = np.std(self.dic_item[i]['value'])
 
 
 
@@ -177,5 +186,7 @@ if __name__ == "__main__":
     kg = Kg_construct_ehr()
     kg.create_kg_dic()
     hetro_model = hetero_model(kg)
-    LSTM_model = LSTM_model(kg,hetro_model)
+    process_data = kg_process_data(kg)
+    process_data.seperate_train_test()
+    LSTM_model = LSTM_model(kg,hetro_model,process_data)
 
