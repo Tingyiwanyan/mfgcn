@@ -41,7 +41,7 @@ class Kg_construct_ehr():
         self.pres = pd.read_csv(self.prescription)
 
     def read_charteve(self):
-        self.char = pd.read_csv(self.charteve,chunksize=3000000)
+        self.char = pd.read_csv(self.charteve,chunksize=4000000)
         self.char_ar = np.array(self.char.get_chunk())
         self.num_char = self.char_ar.shape[0]
 

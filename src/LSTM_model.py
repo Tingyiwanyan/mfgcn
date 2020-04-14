@@ -59,32 +59,7 @@ class LSTM_model():
         self.bias_output_gate = tf.Variable(self.init_output_gate(shape=(self.latent_dim,)))
 
 
-    def RNN_cell(self):
-        self.x_input_cur = tf.gather(self.input_x,0,axis=1)
-        self.init_hiddenstate = tf.layers.dense(inputs=self.x_input_cur,
-                                     units=self.latent_dim,
-                                     kernel_initializer=tf.keras.initializers.he_normal(seed=None),
-                                     activation=tf.nn.relu)
-
-        self.x_input_cur_sec = tf.gather(self.input_x,1,axis=1)
-        self.input_cur_sec = tf.concat([self.init_hiddenstate, self.x_input_cur_sec],1)
-        self.hidden_sec =tf.layers.dense(inputs=self.input_cur_sec,
-                                    units=self.latent_dim,
-                                    kernel_initializer=tf.keras.initializers.he_normal(seed=None),
-                                    activation=tf.nn.relu)
-        self.x_input_cur_third = tf.gather(self.input_x,2,axis=1)
-        self.input_cur_third = tf.concat([self.hidden_sec,self.x_input_cur_third],1)
-        self.hidden_third = tf.layers.dense(inputs=self.x_input_cur_third,
-                                            units=self.latent_dim,
-                                            kernel_initializer=tf.keras.initializers.he_normal(seed=None),
-                                            activation=tf.nn.relu)
-
-
-
-    def LSTM_cell(self):
-        """
-        Implementation of LSTM cell for recursive usage
-        """
+    def lstm_cell(self):
         cell_state = []
         hidden_rep = []
         for i in range(self.time_sequence):
@@ -94,9 +69,9 @@ class LSTM_model():
             else:
                 concat_cur = tf.concat([hidden_rep[i-1],x_input_cur],1)
             forget_cur = \
-                tf.nn.relu(tf.math.add(tf.matmul(concat_cur,self.weight_forget_gate),self.bias_forget_gate))
+                tf.math.sigmoid(tf.math.add(tf.matmul(concat_cur,self.weight_forget_gate),self.bias_forget_gate))
             info_cur = \
-                tf.nn.relu(tf.math.add(tf.matmul(concat_cur,self.weight_info_gate),self.bias_info_gate))
+                tf.math.sigmoid(tf.math.add(tf.matmul(concat_cur,self.weight_info_gate),self.bias_info_gate))
             cellstate_cur = \
                 tf.math.tanh(tf.math.add(tf.matmul(concat_cur,self.weight_cell_state),self.bias_cell_state))
             info_cell_state = tf.multiply(info_cur, cellstate_cur)
@@ -104,29 +79,29 @@ class LSTM_model():
                 forget_cell_state = tf.multiply(forget_cur, cell_state[i - 1])
                 cellstate_cur = tf.math.add(forget_cell_state,info_cell_state)
             output_gate = \
-                tf.nn.relu(tf.math.add(tf.matmul(concat_cur,self.weight_output_gate),self.bias_output_gate))
+                tf.math.sigmoid(tf.math.add(tf.matmul(concat_cur,self.weight_output_gate),self.bias_output_gate))
             hidden_current = tf.multiply(output_gate,cellstate_cur)
             cell_state.append(cellstate_cur)
             hidden_rep.append(hidden_current)
         for i in range(self.time_sequence):
             hidden_rep[i] = tf.expand_dims(hidden_rep[i],1)
-        hidden_rep = tf.concat(hidden_rep,1)
+        self.hidden_rep = tf.concat(hidden_rep,1)
         self.check = concat_cur
 
-        return hidden_rep
+
 
     def softmax_loss(self):
         """
         Implement softmax loss layer
         """
-        self.output_layer = tf.layers.dense(inputs=self.init_hiddenstate,
+        self.output_layer = tf.layers.dense(inputs=self.hidden_rep,
                                            units=self.diagnosis_size,
                                            kernel_initializer=tf.keras.initializers.he_normal(seed=None),
                                            activation=tf.nn.relu)
         self.logit_softmax = tf.nn.softmax(self.output_layer)
-        self.cross_entropy = tf.reduce_mean(tf.math.negative(
-            tf.reduce_sum(tf.math.multiply(self.input_y_diag_single, tf.log(self.logit_softmax)), reduction_indices=[1])))
-        """
+        #self.cross_entropy = tf.reduce_mean(tf.math.negative(
+        #    tf.reduce_sum(tf.math.multiply(self.input_y_diag_single, tf.log(self.logit_softmax)), reduction_indices=[1])))
+
         self.cross_entropy = \
             tf.reduce_mean(
             tf.math.negative(
@@ -135,13 +110,13 @@ class LSTM_model():
                         tf.math.multiply(
                             self.input_y_diag,tf.log(
                                 self.logit_softmax)),reduction_indices=[1]),reduction_indices=[1])))
-        """
+
 
     def config_model(self):
         """
         Model configuration
         """
-        self.LSTM_cell()
+        self.lstm_cell()
         self.softmax_loss()
         self.train_step_cross_entropy = tf.train.AdamOptimizer(1e-3).minimize(self.cross_entropy)
         self.sess = tf.InteractiveSession()
@@ -165,6 +140,7 @@ class LSTM_model():
                 self.train_one_batch[i,index_time_sequence,:] = one_data
                 one_data_logit = self.hetro_model.assign_multi_hot(j)
                 self.logit_one_batch[i,index_time_sequence,:] = one_data_logit
+                index_time_sequence += 1
             one_data_logit_single = self.hetro_model.assign_multi_hot(time_series[0])
             self.train_logit_single[i,:] = one_data_logit_single
 
@@ -181,7 +157,8 @@ class LSTM_model():
                 self.get_batch_train(i+self.batch_size)
                 self.err_ = self.sess.run([self.cross_entropy, self.train_step_cross_entropy,self.init_hiddenstate,self.output_layer,self.logit_softmax],
                                      feed_dict={self.input_x: self.train_one_batch,
-                                                self.input_y_diag_single: self.train_logit_single})
+                                                self.input_y_diag: self.logit_one_batch,
+                                                self.init_hiddenstate:init_hidden_state})
                 print(self.err_[0])
 
 

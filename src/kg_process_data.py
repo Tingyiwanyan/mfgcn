@@ -17,7 +17,8 @@ class kg_process_data():
         self.train_num = np.int(np.floor(self.data_patient_num*self.train_percent))
         self.train_hadm_id = []
         self.train_patient = []
-        self.train_test = []
+        self.test_patient = []
+        self.test_hadm_id = []
 
 
 
@@ -34,6 +35,8 @@ class kg_process_data():
             cur_length = len(self.train_patient)
             if cur_length > self.train_num:
                 break
+
+
         self.test = [i for i in self.data_hadm_id if i not in self.train_hadm_id]
 
 

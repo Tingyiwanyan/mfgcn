@@ -372,7 +372,7 @@ class hetero_model():
 
     def SGNN_loss(self):
         """
-        Implement sgnn with new structure
+        implement sgnn with new structure
         """
 
         negative_training_norm = tf.math.l2_normalize(self.x_negative, axis=1)
