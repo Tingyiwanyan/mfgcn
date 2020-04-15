@@ -554,6 +554,7 @@ class hetero_model():
 
         return np.array(patient_nodes), np.array(item_nodes), np.array(diag_nodes)
 
+
     """
     prepare data for one metapath negative sample 
     """

@@ -5,7 +5,7 @@ import networkx as nx
 import math
 import time
 import pandas as pd
-from kg_model import hetero_model
+from kg_model_modify import hetero_model_modify
 from LSTM_model import LSTM_model
 from kg_process_data import kg_process_data
 
@@ -41,7 +41,7 @@ class Kg_construct_ehr():
         self.pres = pd.read_csv(self.prescription)
 
     def read_charteve(self):
-        self.char = pd.read_csv(self.charteve,chunksize=4000000)
+        self.char = pd.read_csv(self.charteve,chunksize=3000000)
         self.char_ar = np.array(self.char.get_chunk())
         self.num_char = self.char_ar.shape[0]
 
@@ -185,8 +185,8 @@ class Kg_construct_ehr():
 if __name__ == "__main__":
     kg = Kg_construct_ehr()
     kg.create_kg_dic()
-    hetro_model = hetero_model(kg)
     process_data = kg_process_data(kg)
     process_data.seperate_train_test()
+    hetro_model = hetero_model_modify(kg,process_data)
     LSTM_model = LSTM_model(kg,hetro_model,process_data)
 

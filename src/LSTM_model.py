@@ -17,12 +17,13 @@ class LSTM_model():
         self.data_process = data_process
         self.hetro_model = hetro_model
         self.train_data = self.data_process.train_patient
+        self.test_data = self.data_process.test_patient
         self.length_train = len(self.train_data)
         self.batch_size = 16
         self.time_sequence = 3
         self.latent_dim = 100
         self.latent_dim_cell_state = 100
-        self.epoch = 10
+        self.epoch = 6
         self.item_size = len(list(kg.dic_item.keys()))
         self.diagnosis_size = len(list(kg.dic_diag))
         self.patient_size = len(list(kg.dic_patient))
