@@ -13,10 +13,18 @@ class hetero_model_modify():
     def __init__(self, kg, data_process):
         self.data_process = data_process
         self.train_data = self.data_process.train_patient
-        self.test_data = self.data_process.test_patient
-        self.train_data_sgnn = kg.dic_patient.keys()
+        self.test_data = self.data_process.test_hadm_id
+        self.test_data_lstm = self.data_process.test_patient
+        self.length_test = len(self.test_data)
         self.length_train = len(self.train_data)
+        #self.length_train = len(self.train_data)
         self.time_sequence = 3
+        if self.time_sequence == 1:
+            self.train_data_sgnn = self.data_process.train_hadm_id
+        else:
+            self.train_data_sgnn = kg.dic_patient.keys()
+
+        self.length_train_hadm = len(self.train_data_sgnn)
         self.neg_time_length = 15
         self.batch_size = 16
         self.epoch = 6
@@ -534,9 +542,12 @@ class hetero_model_modify():
         init_hidden_state = np.zeros((self.batch_size, self.latent_dim_lstm))
         iteration = np.int(np.floor(np.float(self.length_train) / self.batch_size))
         init_hidden_state_patient = np.zeros((self.batch_size, 1 + self.positive_sample_each_type, self.latent_dim))
-        iteration_sgnn = np.int(np.floor(np.float(len(self.kg.dic_patient.keys())) / self.batch_size))
-
-        for kk in range(self.epoch):
+        iteration_sgnn = np.int(np.floor(np.float(self.length_train_hadm) / self.batch_size))
+        if not self.time_sequence == 1:
+            epoch = 3
+        else:
+            epoch = self.epoch
+        for kk in range(epoch):
             for k in range(iteration_sgnn):
                 self.get_one_batch_sgnn(k + self.batch_size)
                 err_ = self.sess.run([self.negative_sum, self.train_step_neg], feed_dict={self.patient: self.patient_sample,
@@ -558,20 +569,80 @@ class hetero_model_modify():
                                self.init_hiddenstate: init_hidden_state})
                 print(self.err_[0])
 
+    def test_lstm(self):
+        """
+        return test f1 score
+        """
+        length_test_patient = len(self.test_data_lstm)
+        self.one_data_embedded = np.zeros((1, 1 + self.positive_sample_each_type, self.item_size))
+        self.test_output = np.zeros((length_test_patient,self.time_sequence,self.latent_dim))
+        self.test_logit_data = np.zeros((length_test_patient,self.time_sequence,self.diagnosis_size))
+        init_hidden_state = np.zeros((length_test_patient, self.latent_dim_lstm))
+        for i in range(length_test_patient):
+            patient_id = self.test_data_lstm[i]
+            time_series = self.kg.dic_patient_addmission[patient_id]['time_series'][0:self.time_sequence]
+            index_time_sequence = 0
+            for j in time_series:
+                one_data = self.assign_value_patient(j)
+                self.one_data_embedded[0, 0, :] = one_data
+                self.embed = self.sess.run(self.Dense_patient, feed_dict={self.patient: self.one_data_embedded})
+                self.test_output[i, index_time_sequence, :] = self.embed[0][0]
+                one_data_logit = self.assign_multi_hot(j)
+                self.test_logit_data[i, index_time_sequence, :] = one_data_logit
+                index_time_sequence += 1
+        self.logit_output = self.sess.run(self.logit_softmax, feed_dict={self.input_x: self.test_output,
+                                                                         self.init_hiddenstate: init_hidden_state})
+
+        self.rate_total_1 = []
+        self.rate_total_2 = []
+        self.rate_total_3 = []
+        for k in range(length_test_patient):
+            test_sample = self.logit_output[k, 0, :]
+            actual_logit = self.test_logit_data[k, 0, :]
+            detect = np.where(test_sample > 0.001)
+            actual = np.where(actual_logit > 0.1)
+            correct_detect = len([i for i in detect[0] if i in actual[0]])
+            rate = float(correct_detect) / len(actual[0])
+            self.rate_total_1.append(rate)
+            test_sample = self.logit_output[k, 1, :]
+            actual_logit = self.test_logit_data[k, 1, :]
+            detect = np.where(test_sample > 0.001)
+            actual = np.where(actual_logit > 0.1)
+            correct_detect = len([i for i in detect[0] if i in actual[0]])
+            rate = float(correct_detect) / len(actual[0])
+            self.rate_total_2.append(rate)
+            test_sample = self.logit_output[k, 2, :]
+            actual_logit = self.test_logit_data[k, 2, :]
+            detect = np.where(test_sample > 0.001)
+            actual = np.where(actual_logit > 0.1)
+            correct_detect = len([i for i in detect[0] if i in actual[0]])
+            rate = float(correct_detect) / len(actual[0])
+            self.rate_total_3.append(rate)
+
+        self.f1_test_1 = np.mean(self.rate_total_1)
+        self.f1_test_2 = np.mean(self.rate_total_2)
+        self.f1_test_3 = np.mean(self.rate_total_3)
+
     """
     test model accuracy
     """
 
-    def test(self, patient_id):
-        self.patient_id_test = patient_id
-        patient = np.zeros((1,1+self.positive_sample_each_type, self.item_size))
-        patient[0,0, :] = self.assign_value_patient(patient_id)
+    def test(self):
+        #self.patient_id_test = patient_id
+        patient = np.zeros((self.length_test,1+self.positive_sample_each_type, self.item_size))
+        index_p = 0
+        for i in self.test_data:
+            patient[index_p,0, :] = self.assign_value_patient(i)
+            index_p += 1
         embed_patient = self.sess.run([self.Dense_patient], feed_dict={self.patient: patient})
-        embed_patient_norm = embed_patient[0][0][0] / np.linalg.norm(embed_patient[0][0][0])
+        embed_patient_norm = np.zeros((self.length_test, self.latent_dim))
+        for i in range(self.length_test):
+            embed_patient_norm[i,:] = embed_patient[0][i][0] / np.linalg.norm(embed_patient[0][i][0])
         self.embed_item = np.zeros((len(self.kg.dic_item), self.latent_dim))
         self.embed_diag = np.zeros((len(self.kg.dic_diag), self.latent_dim))
-        self.pos_score_item = np.zeros(len(self.kg.dic_item.keys()))
-        self.pos_score_diag = np.zeros(len(self.kg.dic_diag.keys()))
+        self.pos_score_item = np.zeros((self.length_test,len(self.kg.dic_item.keys())))
+        self.pos_score_diag = np.zeros((self.length_test,len(self.kg.dic_diag.keys())))
+        #for j in range(self.length_test):
         for i in self.kg.dic_item.keys():
             index = self.kg.dic_item[i]['item_index']
             single_item = np.zeros((1, self.positive_sample_each_type+self.negative_sample_each_type, self.item_size))
@@ -579,8 +650,11 @@ class hetero_model_modify():
             embed_single_item = self.sess.run([self.Dense_item], feed_dict={self.item: single_item})
             embed_item_single = embed_single_item[0][0][0] / np.linalg.norm(embed_single_item[0][0][0])
             self.embed_item[index, :] = embed_item_single
-            self.pos_score_item[index] = np.sum(np.multiply(embed_patient_norm, embed_item_single))
+            #self.pos_score_item[j,index] = np.sum(np.multiply(embed_patient_norm[j,:], embed_item_single))
 
+        self.pos_score_item = np.matmul(embed_patient_norm,self.embed_item.T)
+
+        #for j in range(self.length_test):
         for i in self.kg.dic_diag.keys():
             index = self.kg.dic_diag[i]['diag_index']
             single_diag = np.zeros((1, self.positive_sample_each_type+self.negative_sample_each_type,self.diagnosis_size))
@@ -588,8 +662,9 @@ class hetero_model_modify():
             embed_single_diag = self.sess.run([self.Dense_diag], feed_dict={self.diagnosis: single_diag})
             embed_diag_single = embed_single_diag[0][0][0] / np.linalg.norm(embed_single_diag[0][0][0])
             self.embed_diag[index, :] = embed_diag_single
-            self.pos_score_diag[index] = np.sum(np.multiply(embed_patient_norm, embed_diag_single))
 
+        self.pos_score_diag = np.matmul(embed_patient_norm,self.embed_diag.T)
+        """
         self.seq_diag = sorted(self.pos_score_diag)
         self.seq_item = sorted(self.pos_score_item)
         self.seq_diag.reverse()
@@ -597,30 +672,39 @@ class hetero_model_modify():
 
         self.index_diag = [list(self.pos_score_diag).index(v) for v in self.seq_diag]
         self.index_item = [list(self.pos_score_item).index(v) for v in self.seq_item]
+        """
 
-        correct_detect_num_item = 0
-        num_item = len(self.kg.dic_patient[patient_id]['itemid'].keys())
-        detect_index_item = np.array(np.where(self.pos_score_item > 0.0))
-        num_total_detect_item = len(detect_index_item)
-        for j in self.kg.dic_patient[patient_id]['itemid'].keys():
-            index_item = self.kg.dic_item[j]['item_index']
-            if index_item in detect_index_item:
-                correct_detect_num_item += 1
+        self.correct_rate_item = np.zeros(self.length_test)
+        for i in range(self.length_test):
+            patient_id = self.test_data[i]
+            correct_detect_num_item = 0
+            num_item = len(self.kg.dic_patient[patient_id]['itemid'].keys())
+            detect_index_item = np.array(np.where(self.pos_score_item[i,:] > 0.0))
+            num_total_detect_item = len(detect_index_item)
+            for j in self.kg.dic_patient[patient_id]['itemid'].keys():
+                index_item = self.kg.dic_item[j]['item_index']
+                if index_item in detect_index_item:
+                    correct_detect_num_item += 1
 
-        pos_rate_item = correct_detect_num_item / np.float(num_item)
+            pos_rate_item = correct_detect_num_item / np.float(num_item)
+            self.correct_rate_item[i] = pos_rate_item
 
-        correct_detect_num_diag = 0
-        num_diag = len(self.kg.dic_patient[patient_id]['neighbor_diag'])
-        detect_index_diag = np.array(np.where(self.pos_score_diag > 0.0))
-        num_total_detect_diag = len(detect_index_diag)
-        for j in self.kg.dic_patient[patient_id]['neighbor_diag']:
-            index_diag = self.kg.dic_diag[j]['diag_index']
-            if index_diag in detect_index_diag:
-                correct_detect_num_diag += 1
+        self.correct_rate_diag = np.zeros(self.length_test)
+        for i in range(self.length_test):
+            patient_id = self.test_data[i]
+            correct_detect_num_diag = 0
+            num_diag = len(self.kg.dic_patient[patient_id]['neighbor_diag'])
+            detect_index_diag = np.array(np.where(self.pos_score_diag[i,:] > 0.0))
+            num_total_detect_diag = len(detect_index_diag)
+            for j in self.kg.dic_patient[patient_id]['neighbor_diag']:
+                index_diag = self.kg.dic_diag[j]['diag_index']
+                if index_diag in detect_index_diag:
+                    correct_detect_num_diag += 1
 
-        pos_rate_diag = correct_detect_num_diag / np.float(num_diag)
+            pos_rate_diag = correct_detect_num_diag / np.float(num_diag)
+            self.correct_rate_diag[i] = pos_rate_diag
 
-        return pos_rate_item, pos_rate_diag
+        #return pos_rate_item, pos_rate_diag
 
     """
     get the ranked item, diag for one patient

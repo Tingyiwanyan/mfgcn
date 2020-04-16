@@ -19,6 +19,7 @@ class LSTM_model():
         self.train_data = self.data_process.train_patient
         self.test_data = self.data_process.test_patient
         self.length_train = len(self.train_data)
+        self.length_train_hadm = len(data_process.train_hadm_id)
         self.batch_size = 16
         self.time_sequence = 3
         self.latent_dim = 100
@@ -133,24 +134,35 @@ class LSTM_model():
         self.logit_one_batch = np.zeros((self.batch_size,self.time_sequence,self.diagnosis_size))
         self.train_logit_single = np.zeros((self.batch_size,self.diagnosis_size))
         for i in range(self.batch_size):
-            patient_id = self.train_data[start_index+i]
-            time_series = self.kg.dic_patient_addmission[patient_id]['time_series'][0:self.time_sequence]
-            index_time_sequence = 0
-            for j in time_series:
-                one_data = self.hetro_model.assign_value_patient(j)
-                self.train_one_batch[i,index_time_sequence,:] = one_data
-                one_data_logit = self.hetro_model.assign_multi_hot(j)
-                self.logit_one_batch[i,index_time_sequence,:] = one_data_logit
-                index_time_sequence += 1
-            one_data_logit_single = self.hetro_model.assign_multi_hot(time_series[0])
-            self.train_logit_single[i,:] = one_data_logit_single
+            if not self.time_sequence == 1:
+                patient_id = self.train_data[start_index+i]
+                time_series = self.kg.dic_patient_addmission[patient_id]['time_series'][0:self.time_sequence]
+                index_time_sequence = 0
+                for j in time_series:
+                    one_data = self.hetro_model.assign_value_patient(j)
+                    self.train_one_batch[i,index_time_sequence,:] = one_data
+                    one_data_logit = self.hetro_model.assign_multi_hot(j)
+                    self.logit_one_batch[i,index_time_sequence,:] = one_data_logit
+                    index_time_sequence += 1
+                one_data_logit_single = self.hetro_model.assign_multi_hot(time_series[0])
+                self.train_logit_single[i,:] = one_data_logit_single
+            else:
+                hadm_id = self.data_process.train_hadm_id[start_index+i]
+                one_data = self.hetro_model.assign_value_patient(hadm_id)
+                self.train_one_batch[i, 0, :] = one_data
+                one_data_logit = self.hetro_model.assign_multi_hot(hadm_id)
+                self.logit_one_batch[i, 0, :] = one_data_logit
+
 
     def train(self):
         """
         train the system
         """
         init_hidden_state = np.zeros((self.batch_size,self.latent_dim))
-        iteration = np.int(np.floor(np.float(self.length_train)/self.batch_size))
+        if not self.time_sequence == 1:
+            iteration = np.int(np.floor(np.float(self.length_train)/self.batch_size))
+        else:
+            iteration = np.int(np.floor(np.float(self.length_train_hadm)/self.batch_size))
         for j in range(self.epoch):
             print('epoch')
             print(j)
@@ -161,6 +173,83 @@ class LSTM_model():
                                                 self.input_y_diag: self.logit_one_batch,
                                                 self.init_hiddenstate:init_hidden_state})
                 print(self.err_[0])
+
+    def test(self):
+        """
+        return test f1 score
+        """
+        if self.time_sequence == 1:
+            length_test_hadmid = len(self.data_process.test_hadm_id)
+            self.test_output = np.zeros((length_test_hadmid, self.time_sequence, self.item_size))
+            self.test_logit_data = np.zeros((length_test_hadmid,self.time_sequence,self.diagnosis_size))
+            init_hidden_state = np.zeros((length_test_hadmid, self.latent_dim))
+            index = 0
+            for i in self.data_process.test_hadm_id:
+                one_data = self.hetro_model.assign_value_patient(i)
+                self.test_output[index,0,:] = one_data
+                test_one_data_logit = self.hetro_model.assign_multi_hot(i)
+                self.test_logit_data[index,0,:] = test_one_data_logit
+                index += 1
+            self.logit_output = self.sess.run(self.logit_softmax,feed_dict={self.input_x:self.test_output,
+                                                                            self.init_hiddenstate:init_hidden_state})
+            self.rate_total = []
+            for k in range(length_test_hadmid):
+                test_sample = self.logit_output[k,0,:]
+                actual_logit = self.test_logit_data[k,0,:]
+                detect = np.where(test_sample>0.001)
+                actual = np.where(actual_logit>0.1)
+                correct_detect = len([i for i in detect[0] if i in actual[0]])
+                rate = float(correct_detect)/len(actual[0])
+                self.rate_total.append(rate)
+            self.f1_test = np.mean(self.rate_total)
+        else:
+            length_test_patient = len(self.test_data)
+            self.test_output = np.zeros((length_test_patient,self.time_sequence,self.item_size))
+            self.test_logit_data = np.zeros((length_test_patient,self.time_sequence,self.diagnosis_size))
+            init_hidden_state = np.zeros((length_test_patient, self.latent_dim))
+            for i in range(length_test_patient):
+                patient_id = self.test_data[i]
+                time_series = self.kg.dic_patient_addmission[patient_id]['time_series'][0:self.time_sequence]
+                index_time_sequence = 0
+                for j in time_series:
+                    #print("im here")
+                    one_data = self.hetro_model.assign_value_patient(j)
+                    self.test_output[i, index_time_sequence, :] = one_data
+                    one_data_logit = self.hetro_model.assign_multi_hot(j)
+                    self.test_logit_data[i, index_time_sequence, :] = one_data_logit
+                    index_time_sequence += 1
+            self.logit_output = self.sess.run(self.logit_softmax, feed_dict={self.input_x: self.test_output,
+                                                                             self.init_hiddenstate: init_hidden_state})
+
+            self.rate_total_1 = []
+            self.rate_total_2 = []
+            self.rate_total_3 = []
+            for k in range(length_test_patient):
+                test_sample = self.logit_output[k, 0, :]
+                actual_logit = self.test_logit_data[k, 0, :]
+                detect = np.where(test_sample > 0.001)
+                actual = np.where(actual_logit > 0.1)
+                correct_detect = len([i for i in detect[0] if i in actual[0]])
+                rate = float(correct_detect) / len(actual[0])
+                self.rate_total_1.append(rate)
+                test_sample = self.logit_output[k, 1, :]
+                actual_logit = self.test_logit_data[k, 1, :]
+                detect = np.where(test_sample > 0.001)
+                actual = np.where(actual_logit > 0.1)
+                correct_detect = len([i for i in detect[0] if i in actual[0]])
+                rate = float(correct_detect) / len(actual[0])
+                self.rate_total_2.append(rate)
+                test_sample = self.logit_output[k, 2, :]
+                actual_logit = self.test_logit_data[k, 2, :]
+                detect = np.where(test_sample > 0.001)
+                actual = np.where(actual_logit > 0.1)
+                correct_detect = len([i for i in detect[0] if i in actual[0]])
+                rate = float(correct_detect) / len(actual[0])
+                self.rate_total_3.append(rate)
+
+            self.f1_test_1 = np.mean(self.rate_total_1)
+            self.f1_test_2 = np.mean(self.rate_total_2)
+            self.f1_test_3 = np.mean(self.rate_total_3)
 
 
 

@@ -8,7 +8,7 @@ class kg_process_data():
     process heterogeneous kg graph data, divide into train and test data set
     """
     def __init__(self,kg):
-        self.train_percent = 1
+        self.train_percent = 0.7
         self.test_percent = 0.3
         self.batch_size = 16
         self.kg = kg
@@ -30,7 +30,7 @@ class kg_process_data():
         """
         for i in self.kg.dic_patient_addmission.keys():
             time_len = len(self.kg.dic_patient_addmission[i]['time_series'])
-            if time_len > 3 or time_len == 3:
+            if time_len > 1 or time_len == 1:
                 self.data_patient.append(i)
                 #for j in self.kg.dic_patient_addmission[i]['time_series']:
                  #   self.train_hadm_id.append(j)
@@ -42,6 +42,7 @@ class kg_process_data():
                self.train_hadm_id.append(j)
 
         self.test_patient = [i for i in self.data_patient if i not in self.train_patient]
+        self.test_hadm_id = [i for i in self.kg.dic_patient.keys() if i not in self.train_hadm_id]
 
         #self.test = [i for i in self.data_hadm_id if i not in self.train_hadm_id]
 
