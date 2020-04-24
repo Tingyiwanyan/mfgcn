@@ -21,7 +21,7 @@ class LSTM_model():
         self.length_train = len(self.train_data)
         self.length_train_hadm = len(data_process.train_hadm_id)
         self.batch_size = 16
-        self.time_sequence = 3
+        self.time_sequence = 1
         self.latent_dim = 100
         self.latent_dim_cell_state = 100
         self.epoch = 6
@@ -239,6 +239,7 @@ class LSTM_model():
                 correct_detect = len([i for i in detect[0] if i in actual[0]])
                 rate = float(correct_detect) / len(actual[0])
                 self.rate_total_2.append(rate)
+                """
                 test_sample = self.logit_output[k, 2, :]
                 actual_logit = self.test_logit_data[k, 2, :]
                 detect = np.where(test_sample > 0.001)
@@ -246,6 +247,7 @@ class LSTM_model():
                 correct_detect = len([i for i in detect[0] if i in actual[0]])
                 rate = float(correct_detect) / len(actual[0])
                 self.rate_total_3.append(rate)
+                """
 
             self.f1_test_1 = np.mean(self.rate_total_1)
             self.f1_test_2 = np.mean(self.rate_total_2)

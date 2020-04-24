@@ -18,7 +18,7 @@ class hetero_model_modify():
         self.length_test = len(self.test_data)
         self.length_train = len(self.train_data)
         #self.length_train = len(self.train_data)
-        self.time_sequence = 3
+        self.time_sequence = 1
         if self.time_sequence == 1:
             self.train_data_sgnn = self.data_process.train_hadm_id
         else:
@@ -611,6 +611,7 @@ class hetero_model_modify():
             correct_detect = len([i for i in detect[0] if i in actual[0]])
             rate = float(correct_detect) / len(actual[0])
             self.rate_total_2.append(rate)
+            """
             test_sample = self.logit_output[k, 2, :]
             actual_logit = self.test_logit_data[k, 2, :]
             detect = np.where(test_sample > 0.001)
@@ -618,6 +619,7 @@ class hetero_model_modify():
             correct_detect = len([i for i in detect[0] if i in actual[0]])
             rate = float(correct_detect) / len(actual[0])
             self.rate_total_3.append(rate)
+            """
 
         self.f1_test_1 = np.mean(self.rate_total_1)
         self.f1_test_2 = np.mean(self.rate_total_2)
