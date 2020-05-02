@@ -391,7 +391,7 @@ def cal_auc(score_pos,score_neg,roc_resolution,test_number_pos,test_number_neg):
     tp_rates = []
     fp_rates = []
 
-    while(threshold < 1.01):
+    while(threshold < 1.001):
         tpr = len(np.where(score_pos>threshold)[0])/np.float(test_number_pos)
         fpr = len(np.where(score_neg>threshold)[0])/np.float(test_number_neg)
         tp_rates.append(tpr)

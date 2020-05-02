@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 import math
+import copy
 from itertools import groupby
 
 class hetero_model_modify():
@@ -17,6 +18,8 @@ class hetero_model_modify():
         self.test_data_lstm = self.data_process.test_patient
         self.length_test = len(self.test_data)
         self.length_train = len(self.train_data)
+        self.resolution = 0.005
+        self.threshold_diag = -0.5
         #self.length_train = len(self.train_data)
         self.time_sequence = 1
         if self.time_sequence == 1:
@@ -28,9 +31,9 @@ class hetero_model_modify():
         self.neg_time_length = 15
         self.batch_size = 16
         self.epoch = 6
-        self.latent_dim = 300
+        self.latent_dim = 100
         self.latent_dim_lstm = 100
-        self.negative_sample_each_type = 50
+        self.negative_sample_each_type = 100
         self.positive_sample_each_type = 10
         self.positive_sample_size = self.positive_sample_each_type*3
         self.negative_sample_size = self.negative_sample_each_type*2
@@ -235,19 +238,20 @@ class hetero_model_modify():
         build item projection layer
         """
         self.Dense_item_ = \
-            tf.nn.relu(tf.math.add(tf.matmul(self.item,self.weight_item),self.bias_item))
+           tf.math.sigmoid(tf.math.add(tf.matmul(self.item,self.weight_item),self.bias_item))
 
         """
         build diagnosis projection layer
         """
         self.Dense_diag_ = \
-            tf.nn.relu(tf.math.add(tf.matmul(self.diagnosis, self.weight_diag), self.bias_diag))
+            tf.math.sigmoid(tf.math.add(tf.matmul(self.diagnosis, self.weight_diag), self.bias_diag))
 
         """
         build patient projection layer
         """
         self.Dense_patient = \
-            tf.nn.relu(tf.math.add(tf.matmul(self.patient, self.weight_patient), self.bias_patient))
+            tf.math.sigmoid(tf.math.add(tf.matmul(self.patient, self.weight_patient), self.bias_patient))
+
 
         self.Dense_item = tf.math.add(self.Dense_item_, self.relation_test)
         self.Dense_diag = tf.math.subtract(self.Dense_diag_, self.relation_diag)
@@ -383,7 +387,14 @@ class hetero_model_modify():
 
         return one_sample
 
-
+    """
+    get train graph
+    """
+    def get_train_graph(self):
+        self.train_graph_diag = copy.deepcopy(self.kg.dic_diag)
+        for j in self.train_graph_diag.keys():
+            patient_neighbor_nodes = [i for i in self.kg.dic_diag[j]['neighbor_patient'] if i not in self.test_data]
+            self.train_graph_diag[j]['neighbor_patient'] = patient_neighbor_nodes
     """
     prepare data positive sampling
     """
@@ -404,7 +415,7 @@ class hetero_model_modify():
         get pos set for patient
         """
         for j in self.diag_pos_index_samples:
-            patient_neighbor_nodes = self.kg.dic_diag[j]['neighbor_patient']
+            patient_neighbor_nodes = self.train_graph_diag[j]['neighbor_patient']#[i for i in self.kg.dic_diag[j]['neighbor_patient'] if i not in self.test_data]
             index_sample = np.int(np.floor(np.random.uniform(0, len(patient_neighbor_nodes), 1)))
             self.pos_nodes_patient.append(patient_neighbor_nodes[index_sample])
         """
@@ -569,6 +580,7 @@ class hetero_model_modify():
                                self.init_hiddenstate: init_hidden_state})
                 print(self.err_[0])
 
+
     def test_lstm(self):
         """
         return test f1 score
@@ -632,14 +644,17 @@ class hetero_model_modify():
     def test(self):
         #self.patient_id_test = patient_id
         patient = np.zeros((self.length_test,1+self.positive_sample_each_type, self.item_size))
+        self.test_logit_diag = np.zeros((self.length_test, len(self.kg.dic_diag.keys())))
         index_p = 0
         for i in self.test_data:
             patient[index_p,0, :] = self.assign_value_patient(i)
+            test_one_data_logit = self.assign_multi_hot(i)
+            self.test_logit_diag[index_p, :] = test_one_data_logit
             index_p += 1
         embed_patient = self.sess.run([self.Dense_patient], feed_dict={self.patient: patient})
-        embed_patient_norm = np.zeros((self.length_test, self.latent_dim))
+        self.embed_patient_norm = np.zeros((self.length_test, self.latent_dim))
         for i in range(self.length_test):
-            embed_patient_norm[i,:] = embed_patient[0][i][0] / np.linalg.norm(embed_patient[0][i][0])
+            self.embed_patient_norm[i,:] = embed_patient[0][i][0] / np.linalg.norm(embed_patient[0][i][0])
         self.embed_item = np.zeros((len(self.kg.dic_item), self.latent_dim))
         self.embed_diag = np.zeros((len(self.kg.dic_diag), self.latent_dim))
         self.pos_score_item = np.zeros((self.length_test,len(self.kg.dic_item.keys())))
@@ -654,7 +669,7 @@ class hetero_model_modify():
             self.embed_item[index, :] = embed_item_single
             #self.pos_score_item[j,index] = np.sum(np.multiply(embed_patient_norm[j,:], embed_item_single))
 
-        self.pos_score_item = np.matmul(embed_patient_norm,self.embed_item.T)
+        self.pos_score_item = np.matmul(self.embed_patient_norm,self.embed_item.T)
 
         #for j in range(self.length_test):
         for i in self.kg.dic_diag.keys():
@@ -665,7 +680,10 @@ class hetero_model_modify():
             embed_diag_single = embed_single_diag[0][0][0] / np.linalg.norm(embed_single_diag[0][0][0])
             self.embed_diag[index, :] = embed_diag_single
 
-        self.pos_score_diag = np.matmul(embed_patient_norm,self.embed_diag.T)
+        self.pos_score_diag = np.matmul(self.embed_patient_norm,self.embed_diag.T)
+
+
+
         """
         self.seq_diag = sorted(self.pos_score_diag)
         self.seq_item = sorted(self.pos_score_item)
@@ -676,6 +694,7 @@ class hetero_model_modify():
         self.index_item = [list(self.pos_score_item).index(v) for v in self.seq_item]
         """
 
+        """
         self.correct_rate_item = np.zeros(self.length_test)
         for i in range(self.length_test):
             patient_id = self.test_data[i]
@@ -705,8 +724,87 @@ class hetero_model_modify():
 
             pos_rate_diag = correct_detect_num_diag / np.float(num_diag)
             self.correct_rate_diag[i] = pos_rate_diag
+        """
+
+
+        self.tp_rate_total = []
+        self.fp_rate_total = []
+        self.tp_rate_roc = []
+        self.fp_rate_roc = []
+        self.correct_rate_diag = np.zeros(self.length_test)
+        threshold = 0.0
+        iter = 0
+        while(threshold<1.01):
+            print(iter)
+            for k in range(self.length_test):
+                #patient_id = self.test_data[i]
+                detect_index_diag = np.where(self.pos_score_diag[k, :] > threshold)
+                detect_index_diag_neg = np.where(self.pos_score_diag[k,:] < threshold)
+                actual_logic_diag = self.test_logit_diag[k,:]
+                actual = np.where(actual_logic_diag>0.1)
+                actual_neg = np.where(actual_logic_diag < 0.1)
+                correct_detect = len([i for i in detect_index_diag[0] if i in actual[0]])
+                uncorrect_detect = len([i for i in detect_index_diag[0] if i in actual_neg[0]])
+                tp_rate = float(correct_detect) / len(actual[0])
+                fp_rate = float(uncorrect_detect) / len(actual_neg[0])
+                self.tp_rate_total.append(tp_rate)
+                self.fp_rate_total.append(fp_rate)
+
+            self.tp_test = np.mean(self.tp_rate_total)
+            self.fp_test = np.mean(self.fp_rate_total)
+            self.tp_rate_roc.append(self.tp_test)
+            self.fp_rate_roc.append(self.fp_test)
+
+            threshold += self.resolution
+            iter += 1
+            self.tp_rate_total = []
+            self.fp_rate_total = []
+
+    def diag_accur(self):
+        self.diag_f1_score = np.zeros(len(self.kg.dic_diag.keys()))
+        for i in range(len(self.kg.dic_diag.keys())):
+            true_positives = 0
+            true_negatives = 0
+            false_negative = 0
+            false_positive = 0
+            for j in range(self.length_test):
+                if self.pos_score_diag[j,i] > self.threshold_diag and self.test_logit_diag[j,i] > 0.1:
+                    true_positives += 1
+                if self.pos_score_diag[j,i] < self.threshold_diag and self.test_logit_diag[j,i] < 0.1:
+                    true_negatives += 1
+                if self.pos_score_diag[j,i] > self.threshold_diag and self.test_logit_diag[j,i] < 0.1:
+                    false_positive += 1
+                if self.pos_score_diag[j, i] < self.threshold_diag and self.test_logit_diag[j, i] > 0.1:
+                    false_negative += 1
+            if true_positives == 0:
+                self.diag_f1_score[i] = np.float(0)
+            else:
+                precision = np.float(true_positives)/(true_positives+false_positive)
+                recall = np.float(true_positives)/(false_negative+true_positives)
+                self.diag_f1_score[i] = 2*(precision*recall)/(precision+recall)
+
+            #rate = np.float(correct_detect)/self.length_test
+            #self.diag_f1_score[i] = rate
+
+
 
         #return pos_rate_item, pos_rate_diag
+
+    def write_file(self,file_name_tp,file_name_fp):
+        with open(file_name_tp,"w") as output:
+            output.write(str(self.tp_rate_roc))
+        with open(file_name_fp,"w") as output:
+            output.write(str(self.fp_rate_roc))
+
+    def cal_auc(self):
+        area = 0
+        self.tp_rate_roc.sort()
+        self.fp_rate_roc.sort()
+        for i in range(len(self.tp_rate_roc) - 1):
+            x = self.fp_rate_roc[i + 1] - self.fp_rate_roc[i]
+            y = (self.tp_rate_roc[i + 1] + self.tp_rate_roc[i]) / 2
+            area += x * y
+        return area
 
     """
     get the ranked item, diag for one patient

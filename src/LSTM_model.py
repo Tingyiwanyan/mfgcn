@@ -22,8 +22,8 @@ class LSTM_model():
         self.length_train_hadm = len(data_process.train_hadm_id)
         self.batch_size = 16
         self.time_sequence = 1
-        self.latent_dim = 100
-        self.latent_dim_cell_state = 100
+        self.latent_dim = 300
+        self.latent_dim_cell_state = 300
         self.epoch = 6
         self.item_size = len(list(kg.dic_item.keys()))
         self.diagnosis_size = len(list(kg.dic_diag))
@@ -81,7 +81,7 @@ class LSTM_model():
                 forget_cell_state = tf.multiply(forget_cur, cell_state[i - 1])
                 cellstate_cur = tf.math.add(forget_cell_state,info_cell_state)
             output_gate = \
-                tf.math.sigmoid(tf.math.add(tf.matmul(concat_cur,self.weight_output_gate),self.bias_output_gate))
+                tf.nn.relu(tf.math.add(tf.matmul(concat_cur,self.weight_output_gate),self.bias_output_gate))
             hidden_current = tf.multiply(output_gate,cellstate_cur)
             cell_state.append(cellstate_cur)
             hidden_rep.append(hidden_current)

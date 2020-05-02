@@ -8,6 +8,10 @@ import pandas as pd
 from kg_model_modify import hetero_model_modify
 from LSTM_model import LSTM_model
 from kg_process_data import kg_process_data
+from Shallow_nn_ehr import NN_model
+from evaluation import cal_auc
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
 
 class Kg_construct_ehr():
     """
@@ -41,9 +45,10 @@ class Kg_construct_ehr():
         self.pres = pd.read_csv(self.prescription)
 
     def read_charteve(self):
-        self.char = pd.read_csv(self.charteve,chunksize=4000000)
-        self.char_ar = np.array(self.char.get_chunk())
-        self.num_char = self.char_ar.shape[0]
+        self.char = open(self.charteve)
+        #self.char = pd.read_csv(self.charteve,chunksize=4000000)
+        #self.char_ar = np.array(self.char.get_chunk())
+        #self.num_char = self.char_ar.shape[0]
 
     def read_ditem(self):
         self.d_item = pd.read_csv(self.d_item)
@@ -62,12 +67,21 @@ class Kg_construct_ehr():
         self.dic_patient_addmission = {}
         index_item = 0
         index_diag = 0
-        for i in range(self.num_char):
-            itemid = self.char_ar[i][4]
-            value = self.char_ar[i][8]
-            hadm_id = self.char_ar[i][2]
-            patient_id = self.char_ar[i][1]
-            date_time = self.char_ar[i][5].split(' ')
+        num_read = 0
+        for line in self.char:
+            if num_read == 0:
+                num_read += 1
+                continue
+            if num_read > 4000000:
+                break
+            num_read += 1
+            line = line.rstrip('\n')
+            line = line.split(',')
+            itemid = np.int(line[4])
+            value = np.float(line[9])
+            hadm_id = np.int(line[2])
+            patient_id = np.int(line[1])
+            date_time = line[5].split(' ')
             date = [np.int(i) for i in date_time[0].split('-')]
             date_value = date[0]*10000+date[1]*100+date[2]
             time = [np.int(i) for i in date_time[1].split(':')]
@@ -132,6 +146,8 @@ class Kg_construct_ehr():
 
 
 
+
+
             #self.dic_patient.setdefault('itemid',[]).append([])
 
         for i in range(self.diag_ar.shape[0]):
@@ -152,6 +168,65 @@ class Kg_construct_ehr():
         for i in self.dic_item.keys():
             self.dic_item[i]['mean_value'] = np.mean(self.dic_item[i]['value'])
             self.dic_item[i]['std'] = np.std(self.dic_item[i]['value'])
+
+        for k in self.dic_diag.keys():
+            num_k1 = k[0]
+            num_k3 = k[0:3]
+            if (num_k1 == 'E' or num_k1 == 'V'):
+                self.dic_diag[k]['icd'] = 17
+                self.dic_diag[k]['icd_type'] = 'E and V codes: external causes of injury and supplemental classification'
+            elif int(num_k3) <= 139:
+                self.dic_diag[k]['icd'] = 0
+                self.dic_diag[k]['icd_type'] = '001–139: infectious and parasitic diseases'
+            elif int(num_k3) <= 239:
+                self.dic_diag[k]['icd'] = 1
+                self.dic_diag[k]['icd_type'] = '140–239: neoplasms'
+            elif int(num_k3) <= 279:
+                self.dic_diag[k]['icd'] = 2
+                self.dic_diag[k]['icd_type'] = '240–279: endocrine, nutritional and metabolic diseases, and immunity disorders'
+            elif int(num_k3) <= 289:
+                self.dic_diag[k]['icd'] = 3
+                self.dic_diag[k]['icd_type'] = '280–289: diseases of the blood and blood-forming organs'
+            elif int(num_k3) <= 319:
+                self.dic_diag[k]['icd'] = 4
+                self.dic_diag[k]['icd_type'] = '290–319: mental disorders'
+            elif int(num_k3) <= 389:
+                self.dic_diag[k]['icd'] = 5
+                self.dic_diag[k]['icd_type'] = '320–389: diseases of the nervous system and sense organs'
+            elif int(num_k3) <= 459:
+                self.dic_diag[k]['icd'] = 6
+                self.dic_diag[k]['icd_type'] = '390–459: diseases of the circulatory system'
+            elif int(num_k3) <= 519:
+                self.dic_diag[k]['icd'] = 7
+                self.dic_diag[k]['icd_type'] = '460–519: diseases of the respiratory system'
+            elif int(num_k3) <= 579:
+                self.dic_diag[k]['icd'] = 8
+                self.dic_diag[k]['icd_type'] = '520–579: diseases of the digestive system'
+            elif int(num_k3) <= 629:
+                self.dic_diag[k]['icd'] = 9
+                self.dic_diag[k]['icd_type'] = '580–629: diseases of the genitourinary system'
+            elif int(num_k3) <= 679:
+                self.dic_diag[k]['icd'] = 10
+                self.dic_diag[k]['icd_type'] = '630–679: complications of pregnancy, childbirth, and the puerperium'
+            elif int(num_k3) <= 709:
+                self.dic_diag[k]['icd'] = 11
+                self.dic_diag[k]['icd_type'] = '680–709: diseases of the skin and subcutaneous tissue'
+            elif int(num_k3) <= 739:
+                self.dic_diag[k]['icd'] = 12
+                self.dic_diag[k]['icd_type'] = '710–739: diseases of the musculoskeletal system and connective tissue'
+            elif int(num_k3) <= 759:
+                self.dic_diag[k]['icd'] = 13
+                self.dic_diag[k]['icd_type'] = '740–759: congenital anomalies'
+            elif int(num_k3) <= 779:
+                self.dic_diag[k]['icd'] = 14
+                self.dic_diag[k]['icd_type'] = '760–779: certain conditions originating in the perinatal period'
+            elif int(num_k3) <= 799:
+                self.dic_diag[k]['icd'] = 15
+                self.dic_diag[k]['icd_type'] = '780–799: symptoms, signs, and ill-defined conditions'
+            else:
+                self.dic_diag[k]['icd'] = 16
+                self.dic_diag[k]['icd_type'] = '800–999: injury and poisoning'
+
 
 
 
@@ -181,12 +256,173 @@ class Kg_construct_ehr():
 
 
 
-
 if __name__ == "__main__":
     kg = Kg_construct_ehr()
     kg.create_kg_dic()
     process_data = kg_process_data(kg)
-    process_data.seperate_train_test()
+    test_accur = []
+    #process_data.seperate_train_test()
+    print("finished loading")
+
+    #for i in range(3):
+    """
+    process_data.cross_validation_seperate(0)
     hetro_model = hetero_model_modify(kg,process_data)
-    LSTM_model = LSTM_model(kg,hetro_model,process_data)
+    #LSTM_model = LSTM_model(kg,hetro_model,process_data)
+    hetro_model.config_model()
+    print("in get train")
+    hetro_model.get_train_graph()
+    hetro_model.train()
+    hetro_model.test()
+
+    embed_patient = hetro_model.embed_patient_norm
+    embed_diag = hetro_model.embed_diag
+    embed_item = hetro_model.embed_item
+    embed_total = np.concatenate((embed_diag,embed_patient,embed_item),axis=0)
+    embed_total_2d = TSNE(n_components=2).fit_transform(embed_total)
+    label = np.zeros(4510)
+    label[0:2922] = 0
+    label[2922:2922+1141] = 18
+    label[2922+1141:] = 19
+    for i in kg.dic_diag.keys():
+        index_class = kg.dic_diag[i]['icd']
+        index = kg.dic_diag[i]['diag_index']
+        label[index] = index_class
+    for i in range(4510):
+        if label[i] == 0:
+            color_ = "blue"
+            makersize_ = 4
+        if label[i] == 18:
+            color_ = "red"
+            makersize_ = 5
+        if label[i] == 19:
+            color_ = "green"
+            makersize_ = 6
+        plt.plot(embed_total_2d[i][0],embed_total_2d[i][1],'.',color=color_,markersize=makersize_)
+
+
+    for i in kg.dic_patient_addmission.keys():
+        patient_dob = np.float(patient_info_ar[np.where(patient_info_ar[:, 1] == i)[0][0], 3].split(' ')[0].split('-')[0])
+        admit_time = kg.dic_patient_addmission[i][kg.dic_patient_addmission[i]['time_series'][0]]['date'][0]
+        age = admit_time - patient_dob
+        kg.dic_patient_addmission[i]['age'] = age
+
+    for i in kg.dic_patient.keys():
+        for j in kg.dic_patient_addmission.keys():
+            if i in kg.dic_patient_addmission[j]['time_series']:
+                kg.dic_patient[i]['age'] = kg.dic_patient_addmission[j]['age']
+
+
+    patient_age = np.zeros(len(process_data.test_hadm_id))
+    index_patient = 0
+    for i in process_data.test_hadm_id:
+        #print(index_patient)
+        age_patient = kg.dic_patient[i]['age']
+        patient_age[index_patient] = age_patient
+        index_patient += 1
+    """
+
+    """
+    if label[i] == 1:
+        color_ = "orange"
+    if label[i] == 2:
+        color_ = "purple"
+    if label[i] == 3:
+        color_ = "brown"
+    if label[i] == 4:
+        color_ = "pink"
+    if label[i] == 5:
+        color_ = "gray"
+    if label[i] == 6:
+        color_ = "olive"
+    if label[i] == 7:
+        color_ = "cyan"
+    if label[i] == 8:
+        color_ = "black"
+    if label[i] == 9:
+        color_ = "darkorange"
+    if label[i] == 10:
+        color_ = "burlywood"
+    if label[i] == 11:
+        color_ = "indianred"
+    if label[i] == 12:
+        color_ = "tan"
+    if label[i] == 13:
+        color_ = "darkgoldenrod"
+    if label[i] == 14:
+        color_ = "gold"
+    if label[i] == 15:
+        color_ = "khaki"
+    if label[i] == 16:
+        color_ = "darkkhaki"
+    if label[i] == 17:
+        color_ = "yellow"
+    """
+
+
+
+
+        #single_test_accur = np.mean(hetro_model.tp_test)
+        #test_accur.append(hetro_model.tp_test)
+        #del hetro_model
+    """
+    file = open("/home/tingyi/mfgcn/src/bl_100_sigmoid_fp_73.txt")
+    for line in file:
+        fp_rate = line.rstrip('\n')
+    fp_rate = fp_rate.split(',')
+    fp_rate = [i.replace('[','') for i in fp_rate]
+    fp_rate = [i.replace(']','') for i in fp_rate]
+    fp_rate = [np.float(i) for i in fp_rate]
+
+    file = open("/home/tingyi/mfgcn/src/bl_100_sigmoid_tp_73.txt")
+    for line in file:
+        tp_rate = line.rstrip('\n')
+    tp_rate = tp_rate.split(',')
+    tp_rate = [i.replace('[','') for i in tp_rate]
+    tp_rate = [i.replace(']','') for i in tp_rate]
+    tp_rate = [np.float(i) for i in tp_rate]
+    """
+
+
+
+
+
+
+
+    """
+    test_accur = []
+    for i in range(process_data.cross_validation_folder):
+        process_data.cross_validation_seperate(i)
+        hetro_model = hetero_model_modify(kg, process_data)
+        LSTM_model_ = LSTM_model(kg,hetro_model,process_data)
+        LSTM_model_.config_model()
+        LSTM_model_.train()
+        LSTM_model_.test()
+        test_accur.append(LSTM_model_.f1_test)
+        del LSTM_model_
+    """
+
+    #test_accur = []
+    #for i in range(process_data.cross_validation_folder):
+
+    process_data.cross_validation_seperate(0)
+    hetro_model_ = hetero_model_modify(kg,process_data)
+    nn_model = NN_model(kg,hetro_model_,process_data)
+    nn_model.config_model()
+    nn_model.train()
+    nn_model.test()
+        #test_accur.append(nn_model.tp_test)
+        #del nn_model
+
+    #for i in range(2920):
+
+
+
+
+
+
+
+
+
+
 

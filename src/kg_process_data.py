@@ -11,6 +11,7 @@ class kg_process_data():
         self.train_percent = 0.7
         self.test_percent = 0.3
         self.batch_size = 16
+        self.cross_validation_folder = np.int(10)
         self.kg = kg
         #self.data_patient_num = len(kg.dic_patient_addmission.keys())
         self.data_hadm_id = kg.dic_patient.keys()
@@ -23,6 +24,31 @@ class kg_process_data():
         self.data_hadm_id = []
 
 
+    def cross_validation_seperate(self,index):
+        """
+        split first patient encounter into 10 fold
+        part: which part to use as validation
+        """
+        self.part_test_num = np.int(self.cross_validation_folder*self.test_percent)
+        self.part_train_num = np.int(self.cross_validation_folder*self.train_percent)
+        self.split_test = []
+        self.split_train = []
+        self.split = np.array_split(self.kg.dic_patient.keys(),self.cross_validation_folder)
+        self.split_test_data = []
+        self.split_train_data = []
+        for i in range(self.part_test_num):
+            self.split_test.append(index+i)
+        for i in range(self.part_test_num):
+            if self.split_test[i] == self.cross_validation_folder or self.split_test[i] > self.cross_validation_folder:
+                self.split_test[i] = self.split_test[i] - self.cross_validation_folder
+        self.split_train = [i for i in range(self.cross_validation_folder) if i not in self.split_test]
+        for i in self.split_test:
+            self.split_test_data = self.split_test_data + list(self.split[i])
+        for i in self.split_train:
+            self.split_train_data = self.split_train_data + list(self.split[i])
+
+        self.train_hadm_id = self.split_train_data
+        self.test_hadm_id = self.split_test_data
 
     def seperate_train_test(self):
         """
