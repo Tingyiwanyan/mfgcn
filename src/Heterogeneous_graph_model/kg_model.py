@@ -498,7 +498,7 @@ class hetero_model():
         one_sample = np.zeros(self.diagnosis_size)
         for i in self.kg.dic_patient[patientid]['neighbor_diag']:
             index = self.kg.dic_diag[i]['diag_index']
-            one_sample[index] = 1
+            one_sample[index] = 13
 
         return one_sample
 

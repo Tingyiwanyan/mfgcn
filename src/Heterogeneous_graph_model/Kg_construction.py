@@ -26,12 +26,26 @@ class Kg_construct_ehr():
         self.d_item = file_path + '/D_ITEMS.csv'
         self.noteevents = file_path + '/NOTEEVENTS.csv'
         self.proc_icd = file_path + '/PROCEDURES_ICD.csv'
+        self.labeve = file_path + '/LABEVENTS.csv'
+        self.patient = file_path + '/PATIENTS.csv'
+        self.ICU_stay = file_path + '/ICUSTAYS.csv'
+        self.read_icustay()
+        self.read_labeve()
+        self.read_patient()
         self.read_diagnosis()
         self.read_charteve()
         self.read_diagnosis_d()
         self.read_prescription()
         self.read_ditem()
         #self.read_proc_icd()
+
+    def read_icustay(self):
+        self.icu = pd.read_csv(self.ICU_stay)
+        self.icu_ar = np.array(self.icu)
+
+    def read_patient(self):
+        self.pat = pd.read_csv(self.patient)
+        self.pat_ar = np.array(self.pat)
 
     def read_diagnosis(self):
         self.diag = pd.read_csv(self.diagnosis)
@@ -50,6 +64,12 @@ class Kg_construct_ehr():
         #self.char_ar = np.array(self.char.get_chunk())
         #self.num_char = self.char_ar.shape[0]
 
+    def read_labeve(self):
+        #self.lab = open(self.labeve)
+        self.lab = pd.read_csv(self.labeve,chunksize=4000000)
+        self.lab_ar = np.array(self.lab.get_chunk())
+        self.num_lab = self.lab_ar.shape[0]
+
     def read_ditem(self):
         self.d_item = pd.read_csv(self.d_item)
         self.d_item_ar = np.array(self.d_item)
@@ -60,6 +80,7 @@ class Kg_construct_ehr():
     def read_proc_icd(self):
         self.proc_icd = pd.read_csv(self.proc_icd)
 
+
     def create_kg_dic(self):
         self.dic_patient = {}
         self.dic_diag = {}
@@ -68,6 +89,7 @@ class Kg_construct_ehr():
         index_item = 0
         index_diag = 0
         num_read = 0
+        """
         for line in self.char:
             if num_read == 0:
                 num_read += 1
@@ -143,12 +165,70 @@ class Kg_construct_ehr():
                     if flag == 0:
                         self.dic_patient[self.dic_patient_addmission[patient_id]['time_series'][-1]]['next_admission'] = hadm_id
                         self.dic_patient_addmission[patient_id].setdefault('time_series', []).append(hadm_id)
+        """
+        self.icu_total = self.icu_ar[np.where(kg.icu_ar[:,-1]>1)[0]]
+        self.total_data = np.intersect1d(list(self.icu_total[:,2]),list(self.lab_ar[:,2]))
+        index_count = 0
+        for i in self.total_data:
+            print(index_count)
+            index_count += 1
+            hadm_id = i
+            self.index_total = i
+            single_patient_hadm_lab = np.where(self.lab_ar[:,2] == i)[0]
+            self.single_patient_hadm_icu = np.where(self.icu_total[:,2] == i)
+            subject_id = self.icu_total[self.single_patient_hadm_icu][0][1]
+            sub_id_pat = np.where(self.pat_ar[:,1]== subject_id)[0]
+            flag = self.pat_ar[sub_id_pat][0][-1]
+            out_hospital_time = self.icu_total[self.single_patient_hadm_icu][0][-2]
+            out_date_time = out_hospital_time.split(' ')
+            out_date = [np.int(i) for i in out_date_time[0].split('-')]
+            out_date_value = out_date[0]*365 + out_date[1]*30 + out_date[2]
+            out_time = [np.int(i) for i in out_date_time[1].split(':')]
+            out_time_value = out_time[0]*60 + out_time[1]
+            if hadm_id not in self.dic_patient.keys():
+                self.dic_patient[hadm_id] = {}
+                self.dic_patient[hadm_id]['itemid'] = {}
+                self.dic_patient[hadm_id]['flag'] = flag
+                self.dic_patient[hadm_id]['prior_time'] = {}
+            for k in single_patient_hadm_lab:
+                value = self.lab_ar[k][6]
+                itemid = self.lab_ar[k][3]
+                if math.isnan(value):
+                    continue
+                self.dic_patient[hadm_id]['nodetype'] = 'patient'
+                self.dic_patient[hadm_id]['next_admission'] = None
+                self.dic_patient[hadm_id]['itemid'].setdefault(itemid, []).append(value)
+                if itemid not in self.dic_item.keys():
+                    self.dic_item[itemid] = {}
+                    self.dic_item[itemid].setdefault('neighbor_patient', []).append(hadm_id)
+                    self.dic_item[itemid]['item_index'] = index_item
+                    self.dic_item[itemid].setdefault('value', []).append(value)
+                    index_item += 1
+                else:
+                    self.dic_item[itemid].setdefault('value', []).append(value)
+                    if hadm_id not in self.dic_item[itemid]['neighbor_patient']:
+                        self.dic_item[itemid].setdefault('neighbor_patient', []).append(hadm_id)
 
-
-
-
-
-            #self.dic_patient.setdefault('itemid',[]).append([])
+            for k in single_patient_hadm_lab:
+                value = self.lab_ar[k][6]
+                itemid = self.lab_ar[k][3]
+                if math.isnan(value):
+                    continue
+                date_time = self.lab_ar[k][4].split(' ')
+                date = [np.int(i) for i in date_time[0].split('-')]
+                date_value = date[0] * 365 + date[1] * 30 + date[2]
+                time = [np.int(i) for i in date_time[1].split(':')]
+                time_value = time[0] * 60 + time[1]
+                if (out_date_value - date_value)>2:
+                    continue
+                self.prior_time = np.int(np.floor(np.float((out_time_value - time_value)/60)))
+                if self.prior_time < 0:
+                    self.prior_time = 0
+                if self.prior_time not in self.dic_patient[hadm_id]['prior_time']:
+                    self.dic_patient[hadm_id]['prior_time'][self.prior_time] = {}
+                    self.dic_patient[hadm_id]['prior_time'][self.prior_time].setdefault(itemid,[]).append(value)
+                else:
+                    self.dic_patient[hadm_id]['prior_time'][self.prior_time].setdefault(itemid,[]).append(value)
 
         for i in range(self.diag_ar.shape[0]):
             hadm_id = self.diag_ar[i][2]
@@ -168,64 +248,6 @@ class Kg_construct_ehr():
         for i in self.dic_item.keys():
             self.dic_item[i]['mean_value'] = np.mean(self.dic_item[i]['value'])
             self.dic_item[i]['std'] = np.std(self.dic_item[i]['value'])
-
-        for k in self.dic_diag.keys():
-            num_k1 = k[0]
-            num_k3 = k[0:3]
-            if (num_k1 == 'E' or num_k1 == 'V'):
-                self.dic_diag[k]['icd'] = 17
-                self.dic_diag[k]['icd_type'] = 'E and V codes: external causes of injury and supplemental classification'
-            elif int(num_k3) <= 139:
-                self.dic_diag[k]['icd'] = 0
-                self.dic_diag[k]['icd_type'] = '001–139: infectious and parasitic diseases'
-            elif int(num_k3) <= 239:
-                self.dic_diag[k]['icd'] = 1
-                self.dic_diag[k]['icd_type'] = '140–239: neoplasms'
-            elif int(num_k3) <= 279:
-                self.dic_diag[k]['icd'] = 2
-                self.dic_diag[k]['icd_type'] = '240–279: endocrine, nutritional and metabolic diseases, and immunity disorders'
-            elif int(num_k3) <= 289:
-                self.dic_diag[k]['icd'] = 3
-                self.dic_diag[k]['icd_type'] = '280–289: diseases of the blood and blood-forming organs'
-            elif int(num_k3) <= 319:
-                self.dic_diag[k]['icd'] = 4
-                self.dic_diag[k]['icd_type'] = '290–319: mental disorders'
-            elif int(num_k3) <= 389:
-                self.dic_diag[k]['icd'] = 5
-                self.dic_diag[k]['icd_type'] = '320–389: diseases of the nervous system and sense organs'
-            elif int(num_k3) <= 459:
-                self.dic_diag[k]['icd'] = 6
-                self.dic_diag[k]['icd_type'] = '390–459: diseases of the circulatory system'
-            elif int(num_k3) <= 519:
-                self.dic_diag[k]['icd'] = 7
-                self.dic_diag[k]['icd_type'] = '460–519: diseases of the respiratory system'
-            elif int(num_k3) <= 579:
-                self.dic_diag[k]['icd'] = 8
-                self.dic_diag[k]['icd_type'] = '520–579: diseases of the digestive system'
-            elif int(num_k3) <= 629:
-                self.dic_diag[k]['icd'] = 9
-                self.dic_diag[k]['icd_type'] = '580–629: diseases of the genitourinary system'
-            elif int(num_k3) <= 679:
-                self.dic_diag[k]['icd'] = 10
-                self.dic_diag[k]['icd_type'] = '630–679: complications of pregnancy, childbirth, and the puerperium'
-            elif int(num_k3) <= 709:
-                self.dic_diag[k]['icd'] = 11
-                self.dic_diag[k]['icd_type'] = '680–709: diseases of the skin and subcutaneous tissue'
-            elif int(num_k3) <= 739:
-                self.dic_diag[k]['icd'] = 12
-                self.dic_diag[k]['icd_type'] = '710–739: diseases of the musculoskeletal system and connective tissue'
-            elif int(num_k3) <= 759:
-                self.dic_diag[k]['icd'] = 13
-                self.dic_diag[k]['icd_type'] = '740–759: congenital anomalies'
-            elif int(num_k3) <= 779:
-                self.dic_diag[k]['icd'] = 14
-                self.dic_diag[k]['icd_type'] = '760–779: certain conditions originating in the perinatal period'
-            elif int(num_k3) <= 799:
-                self.dic_diag[k]['icd'] = 15
-                self.dic_diag[k]['icd_type'] = '780–799: symptoms, signs, and ill-defined conditions'
-            else:
-                self.dic_diag[k]['icd'] = 16
-                self.dic_diag[k]['icd_type'] = '800–999: injury and poisoning'
 
 
 
@@ -256,13 +278,14 @@ class Kg_construct_ehr():
 
 
 
+
 if __name__ == "__main__":
     kg = Kg_construct_ehr()
-    kg.create_kg_dic()
-    process_data = kg_process_data(kg)
-    test_accur = []
+    #kg.create_kg_dic()
+    #process_data = kg_process_data(kg)
+    #test_accur = []
     #process_data.seperate_train_test()
-    print("finished loading")
+   # print("finished loading")
 
     #for i in range(3):
     """
@@ -404,13 +427,14 @@ if __name__ == "__main__":
 
     #test_accur = []
     #for i in range(process_data.cross_validation_folder):
-
+    """
     process_data.cross_validation_seperate(0)
     hetro_model_ = hetero_model_modify(kg,process_data)
     nn_model = NN_model(kg,hetro_model_,process_data)
     nn_model.config_model()
     nn_model.train()
-    nn_model.test()
+    """
+    #nn_model.test()
         #test_accur.append(nn_model.tp_test)
         #del nn_model
 
